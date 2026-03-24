@@ -133,10 +133,10 @@ class PolicyServiceTest : BehaviorSpec({
                         intake shouldBe false
                         heropend shouldBe false
                     }
-                    with(zaakInput.user) {
+                    with(zaakInput.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldContainExactly applicationRolesForZaakType
-                        zaaktypen shouldBe setOf(zaakType.omschrijving)
+                        properties.rollen shouldContainExactly applicationRolesForZaakType
+                        properties.zaaktypen shouldBe setOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -332,10 +332,10 @@ class PolicyServiceTest : BehaviorSpec({
                         open shouldBe true
                         zaaktype shouldBe zaakType.omschrijving
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -383,10 +383,10 @@ class PolicyServiceTest : BehaviorSpec({
                         open shouldBe false
                         zaaktype shouldBe zaakType.omschrijving
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -424,13 +424,13 @@ class PolicyServiceTest : BehaviorSpec({
                     verify(exactly = 1) {
                         opaEvaluationClient.readWerklijstRechten(any<RuleQuery<UserInput>>())
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
                         // this policy check is not zaaktype-specific,
                         // so the roles should be the union of all application roles for which at least one zaaktype is authorized
-                        rollen shouldContainExactly applicationRolesForZaakType1 + applicationRolesForZaakType2
+                        properties.rollen shouldContainExactly applicationRolesForZaakType1 + applicationRolesForZaakType2
                         // this policy check is not zaaktype-specific, so zaaktypen should be null
-                        zaaktypen shouldBe null
+                        properties.zaaktypen shouldBe null
                     }
                 }
             }
@@ -453,10 +453,10 @@ class PolicyServiceTest : BehaviorSpec({
                     verify(exactly = 1) {
                         opaEvaluationClient.readWerklijstRechten(any<RuleQuery<UserInput>>())
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldBe loggedInUser.roles
-                        zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
+                        properties.rollen shouldBe loggedInUser.roles
+                        properties.zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
                     }
                 }
             }
@@ -506,10 +506,10 @@ class PolicyServiceTest : BehaviorSpec({
                         zaaktype shouldBe zaakType.omschrijving
                         zaakOpen shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -562,10 +562,10 @@ class PolicyServiceTest : BehaviorSpec({
                         zaaktype shouldBe zaakType.omschrijving
                         zaakOpen shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -607,10 +607,10 @@ class PolicyServiceTest : BehaviorSpec({
                         zaaktype shouldBe zaakType.omschrijving
                         zaakOpen shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.user) {
+                    with(ruleQuerySlot.captured.input.subject) {
                         id shouldBe loggedInUser.id
-                        rollen shouldBe loggedInUser.roles
-                        zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
+                        properties.rollen shouldBe loggedInUser.roles
+                        properties.zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
                     }
                 }
             }
@@ -694,10 +694,10 @@ class PolicyServiceTest : BehaviorSpec({
 
                     verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
 
-                    val userData = rqSlot.captured.input.user
+                    val userData = rqSlot.captured.input.subject
                     userData.id shouldBe loggedInUserWithMappings.id
-                    userData.rollen shouldBe pabcRolesForZaakType
-                    userData.zaaktypen shouldBe setOf(zaaktype)
+                    userData.properties.rollen shouldBe pabcRolesForZaakType
+                    userData.properties.zaaktypen shouldBe setOf(zaaktype)
                 }
             }
         }
@@ -731,9 +731,9 @@ class PolicyServiceTest : BehaviorSpec({
 
                     verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
 
-                    val userData = rqSlot.captured.input.user
-                    userData.rollen shouldBe roles
-                    userData.zaaktypen shouldBe authorizedZaaktypes
+                    val userData = rqSlot.captured.input.subject
+                    userData.properties.rollen shouldBe roles
+                    userData.properties.zaaktypen shouldBe authorizedZaaktypes
                 }
             }
 
@@ -746,9 +746,9 @@ class PolicyServiceTest : BehaviorSpec({
 
                     verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
 
-                    val userData = rqSlot.captured.input.user
-                    userData.rollen shouldBe roles
-                    userData.zaaktypen shouldBe authorizedZaaktypes
+                    val userData = rqSlot.captured.input.subject
+                    userData.properties.rollen shouldBe roles
+                    userData.properties.zaaktypen shouldBe authorizedZaaktypes
                 }
             }
         }

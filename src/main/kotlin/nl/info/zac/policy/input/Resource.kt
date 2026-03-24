@@ -1,18 +1,18 @@
 /*
- * SPDX-FileCopyrightText: 2022 Atos, 2025 INFO.nl
+ * SPDX-FileCopyrightText: 2025 INFO.nl
  * SPDX-License-Identifier: EUPL-1.2+
  */
 package nl.info.zac.policy.input
 
 import jakarta.json.bind.annotation.JsonbProperty
 
-data class UserData(
+data class Resource<T>(
     @field:JsonbProperty("type")
-    val type: String = "user",
+    val type: String,
 
     @field:JsonbProperty("id")
-    val id: String,
+    val id: String? = null,
 
     @field:JsonbProperty("properties")
-    val properties: UserProperties
+    val properties: T? = null
 )

@@ -10,10 +10,11 @@ package net.atos.zac.document
 import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.raadpleger
 import data.net.atos.zac.rol.recordmanager
-import input.user
-import input.document
+# AuthZEN aliases: map subject/resource to local names used by policy rules
+user := input.subject.properties
+document := input.resource.properties
 
-document_rechten := {
+_all_document_rechten := {
     "lezen": lezen,
     "wijzigen": wijzigen,
     "verwijderen": verwijderen,
@@ -26,6 +27,8 @@ document_rechten := {
     "downloaden": downloaden,
     "converteren": converteren
 }
+
+document_rechten := {"results": [action | some name; _all_document_rechten[name] == true; action := {"name": name}]}
 
 default zaaktype_allowed := false
 zaaktype_allowed if {
@@ -44,7 +47,7 @@ onvergrendeld_of_vergrendeld_door_user if {
 }
 onvergrendeld_of_vergrendeld_door_user if {
     document.vergrendeld == true
-    document.vergrendeld_door == user.id
+    document.vergrendeld_door == input.subject.id
 }
 
 default lezen := false
@@ -90,7 +93,7 @@ default ontgrendelen := false
 ontgrendelen if {
     behandelaar.rol in user.rollen
     zaaktype_allowed
-    document.vergrendeld_door == user.id
+    document.vergrendeld_door == input.subject.id
 }
 ontgrendelen if {
     recordmanager.rol in user.rollen

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Atos, 2025 INFO.nl
+ * SPDX-FileCopyrightText: 2025 INFO.nl
  * SPDX-License-Identifier: EUPL-1.2+
  */
 package nl.info.zac.policy.input
@@ -7,17 +7,15 @@ package nl.info.zac.policy.input
 import jakarta.json.bind.annotation.JsonbProperty
 import nl.info.zac.authentication.LoggedInUser
 
-data class DocumentInput(
-    val loggedInUser: LoggedInUser,
-
-    val documentData: DocumentData,
-
-    val featureFlagPabcIntegration: Boolean
+class OverigeInput(
+    loggedInUser: LoggedInUser,
+    zaaktype: String? = null,
+    featureFlagPabcIntegration: Boolean = false
 ) : UserInput(
     loggedInUser = loggedInUser,
-    zaaktype = documentData.zaaktype,
+    zaaktype = zaaktype,
     featureFlagPabcIntegration = featureFlagPabcIntegration
 ) {
     @field:JsonbProperty("resource")
-    val resource = Resource(type = "document", properties = documentData)
+    val resource = Resource<Any>(type = "application", id = "zac")
 }

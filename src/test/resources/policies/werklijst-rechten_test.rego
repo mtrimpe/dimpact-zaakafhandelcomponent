@@ -17,108 +17,108 @@ import data.net.atos.zac.werklijst.zaken_taken_verdelen
 # inbox
 #######
 test_inbox_wrong_role_fails if {
-    not inbox with input.user.rollen as [ "behandelaar" ]
+    not inbox with input.subject.properties.rollen as [ "behandelaar" ]
 }
 
 test_inbox if {
-    inbox with input.user.rollen as [ "coordinator" ]
+    inbox with input.subject.properties.rollen as [ "coordinator" ]
 }
 
 test_inbox_wrong_role_fails if {
-    not inbox with input.user.rollen as [ "fakeRole" ]
+    not inbox with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_inbox_missing_role_fails if {
-    not inbox with input.user.key as "value"
+    not inbox with input.subject.properties.key as "value"
 }
 
 ####################################
 # ontkoppelde_documenten_verwijderen
 ####################################
 test_ontkoppelde_documenten_verwijderen_wrong_role_fails if {
-    not ontkoppelde_documenten_verwijderen with input.user.rollen as [ "coordinator" ]
+    not ontkoppelde_documenten_verwijderen with input.subject.properties.rollen as [ "coordinator" ]
 }
 
 test_ontkoppelde_documenten_verwijderen if {
-    ontkoppelde_documenten_verwijderen with input.user.rollen as [ "recordmanager" ]
+    ontkoppelde_documenten_verwijderen with input.subject.properties.rollen as [ "recordmanager" ]
 }
 
 test_ontkoppelde_documenten_verwijderen_wrong_role_fails if {
-    not ontkoppelde_documenten_verwijderen with input.user.rollen as [ "fakeRole" ]
+    not ontkoppelde_documenten_verwijderen with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_ontkoppelde_documenten_verwijderen_missing_role_fails if {
-    not ontkoppelde_documenten_verwijderen with input.user.key as "value"
+    not ontkoppelde_documenten_verwijderen with input.subject.properties.key as "value"
 }
 
 ####################################
 # inbox_productaanvragen_verwijderen
 ####################################
 test_inbox_productaanvragen_verwijderen_wrong_role_fails if {
-    not inbox_productaanvragen_verwijderen with input.user.rollen as [ "coordinator" ]
+    not inbox_productaanvragen_verwijderen with input.subject.properties.rollen as [ "coordinator" ]
 }
 
 test_inbox_productaanvragen_verwijderen if {
-    inbox_productaanvragen_verwijderen with input.user.rollen as [ "recordmanager" ]
+    inbox_productaanvragen_verwijderen with input.subject.properties.rollen as [ "recordmanager" ]
 }
 
 test_inbox_productaanvragen_verwijderen_wrong_role_fails if {
-    not inbox_productaanvragen_verwijderen with input.user.rollen as [ "fakeRole" ]
+    not inbox_productaanvragen_verwijderen with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_inbox_productaanvragen_verwijderen_missing_role_fails if {
-    not inbox_productaanvragen_verwijderen with input.user.key as "value"
+    not inbox_productaanvragen_verwijderen with input.subject.properties.key as "value"
 }
 
 #############
 # zaken_taken
 #############
 test_zaken_taken if {
-    zaken_taken with input.user.rollen as [ "raadpleger" ]
+    zaken_taken with input.subject.properties.rollen as [ "raadpleger" ]
 }
 
 test_zaken_taken_wrong_role_fails if {
-    not zaken_taken with input.user.rollen as [ "fakeRole" ]
+    not zaken_taken with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_zaken_taken_missing_role_fails if {
-    not zaken_taken with input.user.key as "value"
+    not zaken_taken with input.subject.properties.key as "value"
 }
 
 ######################
 # zaken_taken_verdelen
 ######################
 test_zaken_taken_verdelen_wrong_role_fails if {
-    not zaken_taken_verdelen with input.user.rollen as [ "behandelaar" ]
+    not zaken_taken_verdelen with input.subject.properties.rollen as [ "behandelaar" ]
 }
 
 test_zaken_taken_verdelen if {
-    zaken_taken_verdelen with input.user.rollen as [ "coordinator" ]
+    zaken_taken_verdelen with input.subject.properties.rollen as [ "coordinator" ]
 }
 
 test_zaken_taken_verdelen_wrong_role_fails if {
-    not zaken_taken_verdelen with input.user.rollen as [ "fakeRole" ]
+    not zaken_taken_verdelen with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_zaken_taken_verdelen_missing_role_fails if {
-    not zaken_taken_verdelen with input.user.key as "value"
+    not zaken_taken_verdelen with input.subject.properties.key as "value"
 }
 
 ######################
 # zaken_taken_exporteren
 ######################
 test_zaken_taken_exporteren_wrong_role_fails if {
-    not zaken_taken_exporteren with input.user.rollen as [ "recordmanager" ]
+    not zaken_taken_exporteren with input.subject.properties.rollen as [ "recordmanager" ]
 }
 
 test_zaken_taken_exporteren if {
-    zaken_taken_exporteren with input.user.rollen as [ "beheerder" ]
+    zaken_taken_exporteren with input.subject.properties.rollen as [ "beheerder" ]
 }
 
 test_zaken_taken_exporteren_wrong_role_fails if {
-    not zaken_taken_exporteren with input.user.rollen as [ "fakeRole" ]
+    not zaken_taken_exporteren with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 test_zaken_taken_exporteren_missing_role_fails if {
-    not zaken_taken_exporteren with input.user.key as "value"
+    not zaken_taken_exporteren with input.subject.properties.key as "value"
 }

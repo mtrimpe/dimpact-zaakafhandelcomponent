@@ -30,9 +30,12 @@ import nl.info.zac.enkelvoudiginformatieobject.util.isSigned
 import nl.info.zac.policy.exception.PolicyException
 import nl.info.zac.policy.input.DocumentData
 import nl.info.zac.policy.input.DocumentInput
+import nl.info.zac.policy.input.NotitieInput
+import nl.info.zac.policy.input.OverigeInput
 import nl.info.zac.policy.input.TaakData
 import nl.info.zac.policy.input.TaakInput
 import nl.info.zac.policy.input.UserInput
+import nl.info.zac.policy.input.WerklijstInput
 import nl.info.zac.policy.input.ZaakData
 import nl.info.zac.policy.input.ZaakInput
 import nl.info.zac.policy.output.DocumentRechten
@@ -71,8 +74,8 @@ class PolicyService @Inject constructor(
      */
     fun readOverigeRechten(zaaktypeDescription: String? = null) =
         evaluationClient.readOverigeRechten(
-            RuleQuery(
-                UserInput(
+            RuleQuery<UserInput>(
+                OverigeInput(
                     loggedInUser = loggedInUserInstance.get(),
                     zaaktype = zaaktypeDescription,
                     featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
@@ -225,8 +228,8 @@ class PolicyService @Inject constructor(
 
     fun readNotitieRechten(): NotitieRechten =
         evaluationClient.readNotitieRechten(
-            RuleQuery(
-                UserInput(
+            RuleQuery<UserInput>(
+                NotitieInput(
                     loggedInUser = loggedInUserInstance.get(),
                     featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
                 )
@@ -235,8 +238,8 @@ class PolicyService @Inject constructor(
 
     fun readWerklijstRechten(): WerklijstRechten =
         evaluationClient.readWerklijstRechten(
-            RuleQuery(
-                UserInput(
+            RuleQuery<UserInput>(
+                WerklijstInput(
                     loggedInUser = loggedInUserInstance.get(),
                     featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
                 )

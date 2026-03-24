@@ -9,12 +9,15 @@ package net.atos.zac.notitie
 
 import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.raadpleger
-import input.user
+# AuthZEN alias: map subject to local name used by policy rules
+user := input.subject.properties
 
-notitie_rechten := {
+_all_notitie_rechten := {
     "lezen": lezen,
     "wijzigen": wijzigen
 }
+
+notitie_rechten := {"results": [action | some name; _all_notitie_rechten[name] == true; action := {"name": name}]}
 
 default lezen := false
 lezen if {

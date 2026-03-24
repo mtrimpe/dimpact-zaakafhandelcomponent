@@ -7,17 +7,41 @@ package nl.info.zac.policy.output
 import jakarta.json.bind.annotation.JsonbCreator
 import jakarta.json.bind.annotation.JsonbProperty
 import nl.info.client.opa.model.OpaRuleResult
+import nl.info.zac.policy.input.Action
 
-data class DocumentRechten @JsonbCreator constructor(
-    @param:JsonbProperty("lezen") val lezen: Boolean,
-    @param:JsonbProperty("wijzigen") val wijzigen: Boolean,
-    @param:JsonbProperty("verwijderen") val verwijderen: Boolean,
-    @param:JsonbProperty("vergrendelen") val vergrendelen: Boolean,
-    @param:JsonbProperty("ontgrendelen") val ontgrendelen: Boolean,
-    @param:JsonbProperty("ondertekenen") val ondertekenen: Boolean,
-    @param:JsonbProperty("toevoegen_nieuwe_versie") val toevoegenNieuweVersie: Boolean,
-    @param:JsonbProperty("verplaatsen") val verplaatsen: Boolean,
-    @param:JsonbProperty("ontkoppelen") val ontkoppelen: Boolean,
-    @param:JsonbProperty("downloaden") val downloaden: Boolean,
-    @param:JsonbProperty("converteren") val converteren: Boolean
-) : OpaRuleResult
+data class DocumentRechten(
+    val lezen: Boolean,
+    val wijzigen: Boolean,
+    val verwijderen: Boolean,
+    val vergrendelen: Boolean,
+    val ontgrendelen: Boolean,
+    val ondertekenen: Boolean,
+    val toevoegenNieuweVersie: Boolean,
+    val verplaatsen: Boolean,
+    val ontkoppelen: Boolean,
+    val downloaden: Boolean,
+    val converteren: Boolean
+) : OpaRuleResult {
+    companion object {
+        @JsonbCreator
+        @JvmStatic
+        fun fromActionSearch(
+            @JsonbProperty("results") results: List<Action>
+        ): DocumentRechten {
+            val names = results.map { it.name }.toSet()
+            return DocumentRechten(
+                lezen = "lezen" in names,
+                wijzigen = "wijzigen" in names,
+                verwijderen = "verwijderen" in names,
+                vergrendelen = "vergrendelen" in names,
+                ontgrendelen = "ontgrendelen" in names,
+                ondertekenen = "ondertekenen" in names,
+                toevoegenNieuweVersie = "toevoegen_nieuwe_versie" in names,
+                verplaatsen = "verplaatsen" in names,
+                ontkoppelen = "ontkoppelen" in names,
+                downloaden = "downloaden" in names,
+                converteren = "converteren" in names
+            )
+        }
+    }
+}

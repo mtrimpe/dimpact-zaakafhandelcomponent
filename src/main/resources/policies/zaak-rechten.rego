@@ -13,10 +13,11 @@ import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.coordinator
 import data.net.atos.zac.rol.raadpleger
 import data.net.atos.zac.rol.recordmanager
-import input.zaak
-import input.user
+# AuthZEN aliases: map subject/resource to local names used by policy rules
+user := input.subject.properties
+zaak := input.resource.properties
 
-zaak_rechten := {
+_all_zaak_rechten := {
     "lezen": lezen,
     "wijzigen": wijzigen,
     "toekennen": toekennen,
@@ -45,6 +46,8 @@ zaak_rechten := {
     "verlengen_doorlooptijd": verlengen_doorlooptijd,
     "wijzigen_locatie": wijzigen_locatie
 }
+
+zaak_rechten := {"results": [action | some name; _all_zaak_rechten[name] == true; action := {"name": name}]}
 
 default zaaktype_allowed := false
 zaaktype_allowed if {

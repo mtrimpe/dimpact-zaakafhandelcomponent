@@ -9,16 +9,19 @@ package net.atos.zac.taak
 
 import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.raadpleger
-import input.user
-import input.taak
+# AuthZEN aliases: map subject/resource to local names used by policy rules
+user := input.subject.properties
+taak := input.resource.properties
 
-taak_rechten := {
+_all_taak_rechten := {
     "lezen": lezen,
     "wijzigen": wijzigen,
     "toekennen": toekennen,
     "creeren_document": creeren_document,
     "toevoegen_document": toevoegen_document
 }
+
+taak_rechten := {"results": [action | some name; _all_taak_rechten[name] == true; action := {"name": name}]}
 
 default zaaktype_allowed := false
 zaaktype_allowed if {

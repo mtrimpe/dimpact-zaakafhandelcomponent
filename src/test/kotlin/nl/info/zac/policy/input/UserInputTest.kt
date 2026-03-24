@@ -18,9 +18,9 @@ class UserInputTest : BehaviorSpec({
             val input = UserInput(user)
 
             Then("no exception is thrown") {
-                input.user.id shouldBeEqual user.id
-                input.user.rollen!! shouldBeEqual user.roles
-                input.user.zaaktypen!! shouldBeEqual user.geautoriseerdeZaaktypen!!
+                input.subject.id shouldBeEqual user.id
+                input.subject.properties.rollen!! shouldBeEqual user.roles
+                input.subject.properties.zaaktypen!! shouldBeEqual user.geautoriseerdeZaaktypen!!
             }
         }
     }

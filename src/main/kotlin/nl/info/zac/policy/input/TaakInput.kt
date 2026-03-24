@@ -10,7 +10,6 @@ import nl.info.zac.authentication.LoggedInUser
 data class TaakInput(
     val loggedInUser: LoggedInUser,
 
-    @field:JsonbProperty("taak")
     val taakData: TaakData,
 
     val featureFlagPabcIntegration: Boolean
@@ -18,4 +17,7 @@ data class TaakInput(
     loggedInUser = loggedInUser,
     zaaktype = taakData.zaaktype,
     featureFlagPabcIntegration = featureFlagPabcIntegration
-)
+) {
+    @field:JsonbProperty("resource")
+    val resource = Resource(type = "taak", properties = taakData)
+}

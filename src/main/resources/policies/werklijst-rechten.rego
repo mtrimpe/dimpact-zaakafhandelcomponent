@@ -11,9 +11,10 @@ import data.net.atos.zac.rol.beheerder
 import data.net.atos.zac.rol.coordinator
 import data.net.atos.zac.rol.raadpleger
 import data.net.atos.zac.rol.recordmanager
-import input.user
+# AuthZEN alias: map subject to local name used by policy rules
+user := input.subject.properties
 
-werklijst_rechten := {
+_all_werklijst_rechten := {
     "inbox": inbox,
     "ontkoppelde_documenten_verwijderen": ontkoppelde_documenten_verwijderen,
     "inbox_productaanvragen_verwijderen": inbox_productaanvragen_verwijderen,
@@ -21,6 +22,8 @@ werklijst_rechten := {
     "zaken_taken_verdelen": zaken_taken_verdelen,
     "zaken_taken_exporteren": zaken_taken_exporteren
 }
+
+werklijst_rechten := {"results": [action | some name; _all_werklijst_rechten[name] == true; action := {"name": name}]}
 
 default inbox := false
 inbox if {

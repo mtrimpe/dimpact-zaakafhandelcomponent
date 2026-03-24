@@ -10,20 +10,20 @@ import rego.v1
 # lezen
 #######
 test_lezen_succeeds if {
-    lezen with input.user.rollen as [ "raadpleger" ]
+    lezen with input.subject.properties.rollen as [ "raadpleger" ]
 }
 
 test_lezen_fails if {
-    not lezen with input.user.rollen as [ "fakeRole" ]
+    not lezen with input.subject.properties.rollen as [ "fakeRole" ]
 }
 
 ##########
 # wijzigen
 ##########
 test_wijzigen_succeeds if {
-    wijzigen with input.user.rollen as [ "behandelaar" ]
+    wijzigen with input.subject.properties.rollen as [ "behandelaar" ]
 }
 
 test_wijzigen_fails if {
-    not wijzigen with input.user.rollen as [ "fakeRole" ]
+    not wijzigen with input.subject.properties.rollen as [ "fakeRole" ]
 }

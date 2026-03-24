@@ -10,13 +10,16 @@ package net.atos.zac.overig
 import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.beheerder
 import data.net.atos.zac.rol.raadpleger
-import input.user
+# AuthZEN alias: map subject to local name used by policy rules
+user := input.subject.properties
 
-overige_rechten := {
+_all_overige_rechten := {
     "starten_zaak": starten_zaak,
     "beheren": beheren,
     "zoeken": zoeken
 }
+
+overige_rechten := {"results": [action | some name; _all_overige_rechten[name] == true; action := {"name": name}]}
 
 default starten_zaak := false
 starten_zaak if {
