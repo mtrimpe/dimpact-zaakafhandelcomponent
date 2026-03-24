@@ -12,7 +12,9 @@ import jakarta.ws.rs.QueryParam
 import jakarta.ws.rs.core.MediaType
 import nl.info.client.klant.exception.KlantRuntimeResponseExceptionMapper
 import nl.info.client.klant.util.KlantClientHeadersFactory
+import nl.info.client.klanten.model.generated.PaginatedDigitaalAdresList
 import nl.info.client.klanten.model.generated.PaginatedExpandPartijList
+import nl.info.client.klanten.model.generated.PaginatedKlantcontactList
 import nl.info.client.klanten.model.generated.PartijIdentificator
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider
@@ -28,6 +30,28 @@ import java.util.UUID
 @Path("/klantinteracties/api/v1")
 @Suppress("LongParameterList")
 interface KlantClient {
+
+    @GET
+    @Path("/digitaleadressen")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun digitaalAdresList(
+        @QueryParam("verstrektDoorBetrokkene__uuid") verstrektDoorBetrokkeneUuid: String? = null,
+        @QueryParam("page") page: Int? = null,
+        @QueryParam("pageSize") pageSize: Int? = null,
+        @QueryParam("soortDigitaalAdres") soortDigitaalAdres: String? = null,
+    ): PaginatedDigitaalAdresList
+
+    @GET
+    @Path("/klantcontacten")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun klantcontactList(
+        @QueryParam(
+            "onderwerpobject__onderwerpobjectidentificatorObjectId"
+        ) onderwerpObjectOnderwerpObjectIdentificatorObjectId:
+        String? = null,
+        @QueryParam("page") page: Int? = null,
+        @QueryParam("pageSize") pageSize: Int? = null,
+    ): PaginatedKlantcontactList
 
     @GET
     @Path("/partijen")

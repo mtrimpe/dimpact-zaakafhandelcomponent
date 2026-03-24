@@ -14,6 +14,7 @@ import nl.info.client.klanten.model.generated.CodeSoortObjectIdEnum.KVK_NUMMER
 import nl.info.client.klanten.model.generated.CodeSoortObjectIdEnum.VESTIGINGSNUMMER
 import nl.info.client.klanten.model.generated.DigitaalAdres
 import nl.info.client.klanten.model.generated.ExpandBetrokkene
+import nl.info.client.klanten.model.generated.SoortDigitaalAdresEnum.EMAIL
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import org.eclipse.microprofile.rest.client.inject.RestClient
@@ -103,4 +104,24 @@ class KlantClientService @Inject constructor(
             pageSize = DEFAULT_PAGE_SIZE,
             partijIdentificatorObjectId = number
         ).getResults().firstOrNull()?.getExpand()?.betrokkenen ?: emptyList()
+
+    private fun findFirstKlantcontactBetrokkeneForFormulierkenmerk(formulierkenmerk: String) =
+        klantClient.klantcontactList(
+            page = 1,
+            pageSize = DEFAULT_PAGE_SIZE,
+            onderwerpObjectOnderwerpObjectIdentificatorObjectId = formulierkenmerk
+        ).getResults().firstOrNull()?.hadBetrokkenen?.firstOrNull()
+
+    private fun findFirstEmailDigitalAddressForBetrokkene(betrokkeneUuid: String) =
+        klantClient.digitaalAdresList(
+            page = 1,
+            pageSize = DEFAULT_PAGE_SIZE,
+            soortDigitaalAdres = EMAIL.toString(),
+            verstrektDoorBetrokkeneUuid = betrokkeneUuid
+        ).getResults().firstOrNull()
+
+    fun findApplicationSpecificEmailAddress(formulierkenmerk: String): String? =
+        findFirstKlantcontactBetrokkeneForFormulierkenmerk(formulierkenmerk)?.let {
+            return findFirstEmailDigitalAddressForBetrokkene(it.uuid.toString())?.adres
+        }
 }

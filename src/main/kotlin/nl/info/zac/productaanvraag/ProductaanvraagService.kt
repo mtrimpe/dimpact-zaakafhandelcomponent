@@ -26,6 +26,7 @@ import net.atos.zac.productaanvraag.util.GeometryTypeEnumJsonAdapter
 import net.atos.zac.productaanvraag.util.IndicatieMachtigingEnumJsonAdapter
 import net.atos.zac.productaanvraag.util.RolOmschrijvingGeneriekEnumJsonAdapter
 import net.atos.zac.util.JsonbUtil
+import nl.info.client.klant.KlantClientService
 import nl.info.client.kvk.util.validateKvKVestigingsnummer
 import nl.info.client.kvk.util.validateKvkNummer
 import nl.info.client.or.`object`.ObjectsClientService
@@ -84,7 +85,8 @@ class ProductaanvraagService @Inject constructor(
     private val cmmnService: CMMNService,
     private val bpmnService: BpmnService,
     private val zaaktypeBpmnConfigurationBeheerService: ZaaktypeBpmnConfigurationBeheerService,
-    private val configurationService: ConfigurationService
+    private val configurationService: ConfigurationService,
+    private val klantClientService: KlantClientService
 ) {
 
     companion object {
@@ -722,6 +724,10 @@ class ProductaanvraagService @Inject constructor(
             )
         }
         pairDocumentsWithZaak(productaanvraagDimpact = productaanvraagDimpact, zaak = zaak)
+        val applicationSpecificEmailAddress = klantClientService.findApplicationSpecificEmailAddress(
+            productaanvraagDimpact.bron.kenmerk
+        )
+        LOG.info { "Application-specific email address: $applicationSpecificEmailAddress" }
         addInitiatorAndBetrokkenenToZaak(
             productaanvraag = productaanvraagDimpact,
             zaak = zaak,

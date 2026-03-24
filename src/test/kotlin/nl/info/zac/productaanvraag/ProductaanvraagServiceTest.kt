@@ -24,6 +24,7 @@ import net.atos.zac.documenten.InboxDocumentenService
 import net.atos.zac.flowable.cmmn.CMMNService
 import net.atos.zac.productaanvraag.InboxProductaanvraagService
 import net.atos.zac.productaanvraag.model.InboxProductaanvraag
+import nl.info.client.klant.KlantClientService
 import nl.info.client.kvk.model.createRandomKvkNumber
 import nl.info.client.kvk.model.createRandomVestigingsNumber
 import nl.info.client.or.`object`.ObjectsClientService
@@ -78,6 +79,7 @@ class ProductaanvraagServiceTest : BehaviorSpec({
     val bpmnService = mockk<BpmnService>()
     val zaaktypeBpmnConfigurationBeheerService = mockk<ZaaktypeBpmnConfigurationBeheerService>()
     val configurationService = mockk<ConfigurationService>()
+    val klantClientService = mockk<KlantClientService>()
     val productaanvraagService = ProductaanvraagService(
         objectsClientService = objectsClientService,
         zgwApiService = zgwApiService,
@@ -93,7 +95,8 @@ class ProductaanvraagServiceTest : BehaviorSpec({
         cmmnService = cmmnService,
         bpmnService = bpmnService,
         zaaktypeBpmnConfigurationBeheerService = zaaktypeBpmnConfigurationBeheerService,
-        configurationService = configurationService
+        configurationService = configurationService,
+        klantClientService = klantClientService
     )
 
     beforeEach {
