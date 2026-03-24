@@ -1289,7 +1289,7 @@
           "naam": "open-forms",
           "kenmerk": "OF-B3CARZ"
         },
-        "type": "productaanvraag-test-compleet",
+        "type": "productaanvraag-type-1",
         "aanvraaggegevens": {
           "overig": {
             "foto": [],
@@ -1300,7 +1300,7 @@
             "customerProfile": [
               {
                 "type": "email",
-                "address": "anonymous@example.com",
+                "address": "test-alternative@example.com",
                 "preferenceUpdate": "useOnlyOnce"
               },
               {

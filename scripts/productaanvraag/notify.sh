@@ -10,11 +10,12 @@ help()
 {
    echo "Notifies ZAC about a product request. Note that the ZAC used endpoint requires API key authentication."
    echo
-   echo "Syntax: $0 [-u|o|k|h]"
+   echo "Syntax: $0 [-u|o|k|a|h]"
    echo "options:"
    echo "-u     Base ZAC URL. Defaults to 'http://localhost:8080'."
    echo "-o     Base Objecten API URL. Defaults to 'http://host.docker.internal:8010'"
    echo "-k     ZAC internal endpoints API key. Defaults to 'openNotificatiesApiSecretKey'."
+   echo "-a     Use alternative object for application-specific email address test."
    echo "-h     Print this help."
    echo
 }
@@ -28,8 +29,10 @@ echoerr() {
 zacBaseURL="http://localhost:8080"
 objectenAPIURL="http://host.docker.internal:8010"
 openNotificatiesApiSecretKey="openNotificatiesApiSecretKey"
+objectUuid="7d23e7ad-4b9e-4cbf-a5fb-75aa4100fa4e"
+altObjectUuid="5658d286-9a84-4cde-b9af-6771bd599a06"
 
-while getopts 'u:o:k:h' OPTION; do
+while getopts 'u:o:k:ah' OPTION; do
   case $OPTION in
     u)
       zacBaseURL=$OPTARG
@@ -39,6 +42,9 @@ while getopts 'u:o:k:h' OPTION; do
       ;;
     k)
       openNotificatiesApiSecretKey=$OPTARG
+      ;;
+    a)
+      objectUuid=$altObjectUuid
       ;;
     h)
       help
@@ -56,8 +62,8 @@ curl --silent --show-error --fail "$objectenAPIURL"/api/v2 > /dev/null
 notification="{
   \"kanaal\": \"objecten\",
   \"resource\": \"object\",
-  \"resourceUrl\": \"$objectenAPIURL/7d23e7ad-4b9e-4cbf-a5fb-75aa4100fa4e\",
-  \"hoofdObject\": \"$objectenAPIURL/7d23e7ad-4b9e-4cbf-a5fb-75aa4100fa4e\",
+  \"resourceUrl\": \"$objectenAPIURL/$objectUuid\",
+  \"hoofdObject\": \"$objectenAPIURL/$objectUuid\",
   \"actie\": \"create\",
   \"aanmaakdatum\": \"$(date +'%Y-%m-%dT%H:%M:%S.000000Z[Europe/Amsterdam]')\",
   \"kenmerken\": {
