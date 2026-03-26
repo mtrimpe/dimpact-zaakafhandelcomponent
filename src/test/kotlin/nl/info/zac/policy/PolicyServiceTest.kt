@@ -5,6 +5,10 @@
 
 package nl.info.zac.policy
 
+import com.dataversation.authzen.AccessService
+import com.dataversation.authzen.model.Action
+import com.dataversation.authzen.model.ActionSearchRequest
+import com.dataversation.authzen.model.ActionSearchResponse
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -16,8 +20,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import jakarta.enterprise.inject.Instance
-import nl.info.client.opa.model.RuleQuery
-import nl.info.client.opa.model.RuleResponse
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
 import nl.info.client.zgw.drc.model.generated.Ondertekening
 import nl.info.client.zgw.drc.model.generated.SoortEnum
@@ -36,10 +38,6 @@ import nl.info.zac.authentication.createLoggedInUser
 import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.enkelvoudiginformatieobject.EnkelvoudigInformatieObjectLockService
 import nl.info.zac.model.createEnkelvoudigInformatieObjectLock
-import nl.info.zac.policy.input.DocumentInput
-import nl.info.zac.policy.input.TaakInput
-import nl.info.zac.policy.input.UserInput
-import nl.info.zac.policy.input.ZaakInput
 import nl.info.zac.policy.output.createDocumentRechten
 import nl.info.zac.policy.output.createOverigeRechten
 import nl.info.zac.policy.output.createTaakRechten
@@ -52,18 +50,43 @@ import java.net.URI
 import java.time.LocalDate
 import java.util.UUID
 
+// Helpers for clean assertion access on ActionSearchRequest
+private val ActionSearchRequest.subjectId get() = subject!!.id
+private val ActionSearchRequest.subjectRollen get() = (subject!!.properties!!["rollen"] as Collection<*>).toSet()
+private val ActionSearchRequest.subjectZaaktypen
+    get() = subject!!.properties!!["zaaktypen"]?.let {
+        (it as Collection<*>).toSet()
+    }
+private fun ActionSearchRequest.resourceProp(key: String) = resource!!.properties!![key]
+
+/**
+ * Convert a *Rechten fixture to an [ActionSearchResponse] by finding which boolean properties are true
+ * and converting their names from camelCase to snake_case action names.
+ */
+private fun toActionSearchResponse(rechten: Any) = ActionSearchResponse(
+    results = rechten::class.members
+        .filter { it.parameters.size == 1 && it.call(rechten) == true }
+        .map { member ->
+            Action(
+                member.name.replace(Regex("([a-z])([A-Z])")) {
+                    "${it.groupValues[1]}_${it.groupValues[2].lowercase()}"
+                }
+            )
+        }
+)
+
 @Suppress("LargeClass")
 class PolicyServiceTest : BehaviorSpec({
     val enkelvoudigInformatieObjectLockService = mockk<EnkelvoudigInformatieObjectLockService>()
     val loggedInUserInstance = mockk<Instance<LoggedInUser>>()
-    val opaEvaluationClient = mockk<OpaEvaluationClient>()
+    val accessService = mockk<AccessService>()
     val ztcClientService = mockk<ZtcClientService>()
     val zrcClientService = mockk<ZrcClientService>()
     val configurationService = mockk<ConfigurationService>()
     val loggedInUser = createLoggedInUser()
     val policyService = PolicyService(
         loggedInUserInstance,
-        opaEvaluationClient,
+        accessService,
         ztcClientService,
         enkelvoudigInformatieObjectLockService,
         zrcClientService,
@@ -77,7 +100,7 @@ class PolicyServiceTest : BehaviorSpec({
     Context("Reading zaakrechten") {
         Given(
             """
-            A logged-in with functional roles, application roles per zaaktype mappings, 
+            A logged-in with functional roles, application roles per zaaktype mappings,
             and a zaak, with PABC feature flag enabled
             """
         ) {
@@ -92,7 +115,7 @@ class PolicyServiceTest : BehaviorSpec({
             val zaakStatus = createZaakStatus()
             val statusType = createStatusType()
             val expectedZaakRechten = createZaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<ZaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
             val loggedInUser = createLoggedInUser(
                 roles = setOf("fakeRole1", "fakeRole2"),
                 // obsolete and not used when PABC feature flag is enabled
@@ -106,7 +129,7 @@ class PolicyServiceTest : BehaviorSpec({
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every { zrcClientService.readStatus(zaak.status) } returns zaakStatus
             every { ztcClientService.readStatustype(zaakStatus.statustype) } returns statusType
-            every { opaEvaluationClient.readZaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(expectedZaakRechten)
+            every { accessService.searchActions(capture(requestSlot)) } returns toActionSearchResponse(expectedZaakRechten)
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
@@ -118,25 +141,21 @@ class PolicyServiceTest : BehaviorSpec({
 
                 And("the expected evaluation data is sent to the policy evaluation client") {
                     verify(exactly = 1) {
-                        opaEvaluationClient.readZaakRechten(any<RuleQuery<ZaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    val zaakInput = ruleQuerySlot.captured.input
-                    with(zaakInput) {
-                        featureFlagPabcIntegration shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("opgeschort") shouldBe zaak.isOpgeschort()
+                        resourceProp("verlengd") shouldBe zaak.isVerlengd()
+                        resourceProp("besloten") shouldBe false
+                        resourceProp("intake") shouldBe false
+                        resourceProp("heropend") shouldBe false
                     }
-                    with(zaakInput.zaakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakType.omschrijving
-                        opgeschort shouldBe zaak.isOpgeschort()
-                        verlengd shouldBe zaak.isVerlengd()
-                        besloten shouldBe false
-                        intake shouldBe false
-                        heropend shouldBe false
-                    }
-                    with(zaakInput.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldContainExactly applicationRolesForZaakType
-                        properties.zaaktypen shouldBe setOf(zaakType.omschrijving)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldContainExactly applicationRolesForZaakType
+                        subjectZaaktypen shouldBe setOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -150,12 +169,12 @@ class PolicyServiceTest : BehaviorSpec({
             val zaakStatus = createZaakStatus()
             val statusType = createStatusType()
             val expectedZaakRechten = createZaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<ZaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every { zrcClientService.readStatus(zaak.status) } returns zaakStatus
             every { ztcClientService.readStatustype(zaakStatus.statustype) } returns statusType
-            every { opaEvaluationClient.readZaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(expectedZaakRechten)
+            every { accessService.searchActions(capture(requestSlot)) } returns toActionSearchResponse(expectedZaakRechten)
             every { configurationService.featureFlagPabcIntegration() } returns false
 
             When("policy rights are requested") {
@@ -164,16 +183,16 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readZaakRechten(any<RuleQuery<ZaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.zaakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakType.omschrijving
-                        opgeschort shouldBe zaak.isOpgeschort()
-                        verlengd shouldBe zaak.isVerlengd()
-                        besloten shouldBe false
-                        intake shouldBe false
-                        heropend shouldBe false
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("opgeschort") shouldBe zaak.isOpgeschort()
+                        resourceProp("verlengd") shouldBe zaak.isVerlengd()
+                        resourceProp("besloten") shouldBe false
+                        resourceProp("intake") shouldBe false
+                        resourceProp("heropend") shouldBe false
                     }
                 }
             }
@@ -188,12 +207,12 @@ class PolicyServiceTest : BehaviorSpec({
             val zaakStatus = createZaakStatus()
             val statusType = createStatusType(omschrijving = ConfigurationService.STATUSTYPE_OMSCHRIJVING_INTAKE)
             val expectedZaakRechten = createZaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<ZaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every { zrcClientService.readStatus(zaak.status) } returns zaakStatus
             every { ztcClientService.readStatustype(zaakStatus.statustype) } returns statusType
-            every { opaEvaluationClient.readZaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(expectedZaakRechten)
+            every { accessService.searchActions(capture(requestSlot)) } returns toActionSearchResponse(expectedZaakRechten)
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
@@ -202,16 +221,16 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readZaakRechten(any<RuleQuery<ZaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.zaakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakType.omschrijving
-                        opgeschort shouldBe zaak.isOpgeschort()
-                        verlengd shouldBe zaak.isVerlengd()
-                        besloten shouldBe false
-                        intake shouldBe true
-                        heropend shouldBe false
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("opgeschort") shouldBe zaak.isOpgeschort()
+                        resourceProp("verlengd") shouldBe zaak.isVerlengd()
+                        resourceProp("besloten") shouldBe false
+                        resourceProp("intake") shouldBe true
+                        resourceProp("heropend") shouldBe false
                     }
                 }
             }
@@ -226,12 +245,12 @@ class PolicyServiceTest : BehaviorSpec({
             val zaakStatus = createZaakStatus()
             val statusType = createStatusType(omschrijving = ConfigurationService.STATUSTYPE_OMSCHRIJVING_HEROPEND)
             val expectedZaakRechten = createZaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<ZaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every { zrcClientService.readStatus(zaak.status) } returns zaakStatus
             every { ztcClientService.readStatustype(zaakStatus.statustype) } returns statusType
-            every { opaEvaluationClient.readZaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(expectedZaakRechten)
+            every { accessService.searchActions(capture(requestSlot)) } returns toActionSearchResponse(expectedZaakRechten)
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
@@ -240,16 +259,16 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readZaakRechten(any<RuleQuery<ZaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.zaakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakType.omschrijving
-                        opgeschort shouldBe zaak.isOpgeschort()
-                        verlengd shouldBe zaak.isVerlengd()
-                        besloten shouldBe false
-                        intake shouldBe false
-                        heropend shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("opgeschort") shouldBe zaak.isOpgeschort()
+                        resourceProp("verlengd") shouldBe zaak.isVerlengd()
+                        resourceProp("besloten") shouldBe false
+                        resourceProp("intake") shouldBe false
+                        resourceProp("heropend") shouldBe true
                     }
                 }
             }
@@ -264,8 +283,8 @@ class PolicyServiceTest : BehaviorSpec({
                 this.setIndicatie(ZaakIndicatie.HEROPEND, true)
             }
             val expectedZaakRechten = createZaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<ZaakInput>>()
-            every { opaEvaluationClient.readZaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(expectedZaakRechten)
+            val requestSlot = slot<ActionSearchRequest>()
+            every { accessService.searchActions(capture(requestSlot)) } returns toActionSearchResponse(expectedZaakRechten)
             every { configurationService.featureFlagPabcIntegration() } returns true
             every { loggedInUserInstance.get() } returns createLoggedInUser()
 
@@ -275,17 +294,17 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readZaakRechten(any<RuleQuery<ZaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.zaakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakZoekObject.zaaktypeOmschrijving
-                        opgeschort shouldBe true
-                        verlengd shouldBe true
-                        heropend shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakZoekObject.zaaktypeOmschrijving
+                        resourceProp("opgeschort") shouldBe true
+                        resourceProp("verlengd") shouldBe true
+                        resourceProp("heropend") shouldBe true
                         // We don't set these two
-                        besloten shouldBe null
-                        intake shouldBe null
+                        resourceProp("besloten") shouldBe null
+                        resourceProp("intake") shouldBe null
                     }
                 }
             }
@@ -310,10 +329,10 @@ class PolicyServiceTest : BehaviorSpec({
                 )
             )
             val expectedTaakRechten = createTaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<TaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
-            every { opaEvaluationClient.readTaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(
-                expectedTaakRechten
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expectedTaakRechten).results
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns true
@@ -326,16 +345,16 @@ class PolicyServiceTest : BehaviorSpec({
                 }
                 And("the correct data is sent to the OPA evaluation client") {
                     verify(exactly = 1) {
-                        opaEvaluationClient.readTaakRechten(any<RuleQuery<TaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.taakData) {
-                        open shouldBe true
-                        zaaktype shouldBe zaakType.omschrijving
+                    with(requestSlot.captured) {
+                        resourceProp("open") shouldBe true
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        subjectZaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -360,10 +379,10 @@ class PolicyServiceTest : BehaviorSpec({
                 )
             )
             val expectedTaakRechten = createTaakRechten()
-            val ruleQuerySlot = slot<RuleQuery<TaakInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
-            every { opaEvaluationClient.readTaakRechten(capture(ruleQuerySlot)) } returns RuleResponse(
-                expectedTaakRechten
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expectedTaakRechten).results
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns true
@@ -376,17 +395,17 @@ class PolicyServiceTest : BehaviorSpec({
                 }
                 And("the correct data is sent to the OPA evaluation client") {
                     verify(exactly = 1) {
-                        opaEvaluationClient.readTaakRechten(any<RuleQuery<TaakInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.taakData) {
+                    with(requestSlot.captured) {
                         // 'open' is always false for task search objects
-                        open shouldBe false
-                        zaaktype shouldBe zaakType.omschrijving
+                        resourceProp("open") shouldBe false
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        subjectZaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -396,7 +415,7 @@ class PolicyServiceTest : BehaviorSpec({
     Context("Reading werklijstrechten") {
         Given("A logged-in user with functional roles, roles mappings and PABC feature flag enabled") {
             val expectedWerklijstRechten = createWerklijstRechten()
-            val ruleQuerySlot = slot<RuleQuery<UserInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
             val zaaktype1Omschrijving = "fakeZaaktype1"
             val zaaktype2Omschrijving = "fakeZaaktype2"
             val applicationRolesForZaakType1 = setOf("fakeApplicationRole1", "fakeApplicationRole2")
@@ -411,8 +430,8 @@ class PolicyServiceTest : BehaviorSpec({
                 ).toMap()
             )
             every {
-                opaEvaluationClient.readWerklijstRechten(capture(ruleQuerySlot))
-            } returns RuleResponse(expectedWerklijstRechten)
+                accessService.searchActions(capture(requestSlot))
+            } returns toActionSearchResponse(expectedWerklijstRechten)
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns true
 
@@ -422,15 +441,16 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("the evaluation client is called with the correct arguments") {
                     werklijstRechten shouldBe expectedWerklijstRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readWerklijstRechten(any<RuleQuery<UserInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
                         // this policy check is not zaaktype-specific,
                         // so the roles should be the union of all application roles for which at least one zaaktype is authorized
-                        properties.rollen shouldContainExactly applicationRolesForZaakType1 + applicationRolesForZaakType2
+                        subjectRollen shouldContainExactly
+                            applicationRolesForZaakType1 + applicationRolesForZaakType2
                         // this policy check is not zaaktype-specific, so zaaktypen should be null
-                        properties.zaaktypen shouldBe null
+                        subjectZaaktypen shouldBe null
                     }
                 }
             }
@@ -438,10 +458,10 @@ class PolicyServiceTest : BehaviorSpec({
 
         Given("A logged-in user and PABC feature flag disabled") {
             val expectedWerklijstRechten = createWerklijstRechten()
-            val ruleQuerySlot = slot<RuleQuery<UserInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
             every {
-                opaEvaluationClient.readWerklijstRechten(capture(ruleQuerySlot))
-            } returns RuleResponse(expectedWerklijstRechten)
+                accessService.searchActions(capture(requestSlot))
+            } returns toActionSearchResponse(expectedWerklijstRechten)
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns false
 
@@ -451,12 +471,12 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("the evaluation client is called with the correct arguments") {
                     werklijstRechten shouldBe expectedWerklijstRechten
                     verify(exactly = 1) {
-                        opaEvaluationClient.readWerklijstRechten(any<RuleQuery<UserInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldBe loggedInUser.roles
-                        properties.zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldBe loggedInUser.roles
+                        subjectZaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
                     }
                 }
             }
@@ -476,11 +496,11 @@ class PolicyServiceTest : BehaviorSpec({
             val enkelvoudigInformatieobject = createEnkelvoudigInformatieObject()
             val enkelvoudigInformatieObjectLock = createEnkelvoudigInformatieObjectLock()
             val expectedDocumentRights = createDocumentRechten()
-            val ruleQuerySlot = slot<RuleQuery<DocumentInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
-            every { opaEvaluationClient.readDocumentRechten(capture(ruleQuerySlot)) } returns RuleResponse(
-                expectedDocumentRights
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expectedDocumentRights).results
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns true
@@ -496,20 +516,20 @@ class PolicyServiceTest : BehaviorSpec({
                     documentRights shouldBe expectedDocumentRights
 
                     verify(exactly = 1) {
-                        opaEvaluationClient.readDocumentRechten(any<RuleQuery<DocumentInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.documentData) {
-                        definitief shouldBe false
-                        vergrendeld shouldBe false
-                        ondertekend shouldBe false
-                        vergrendeldDoor shouldBe null
-                        zaaktype shouldBe zaakType.omschrijving
-                        zaakOpen shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("definitief") shouldBe false
+                        resourceProp("vergrendeld") shouldBe false
+                        resourceProp("ondertekend") shouldBe false
+                        resourceProp("vergrendeld_door") shouldBe null
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("zaak_open") shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        subjectZaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -532,12 +552,12 @@ class PolicyServiceTest : BehaviorSpec({
             }
             val enkelvoudigInformatieObjectLock = createEnkelvoudigInformatieObjectLock()
             val expectedDocumentRights = createDocumentRechten()
-            val ruleQuerySlot = slot<RuleQuery<DocumentInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every {
-                opaEvaluationClient.readDocumentRechten(capture(ruleQuerySlot))
-            } returns RuleResponse(expectedDocumentRights)
+                accessService.searchActions(capture(requestSlot))
+            } returns ActionSearchResponse(results = toActionSearchResponse(expectedDocumentRights).results)
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns true
 
@@ -552,20 +572,20 @@ class PolicyServiceTest : BehaviorSpec({
                     documentRights shouldBe expectedDocumentRights
 
                     verify(exactly = 1) {
-                        opaEvaluationClient.readDocumentRechten(any<RuleQuery<DocumentInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.documentData) {
-                        definitief shouldBe false
-                        vergrendeld shouldBe true
-                        ondertekend shouldBe true
-                        vergrendeldDoor shouldBe null
-                        zaaktype shouldBe zaakType.omschrijving
-                        zaakOpen shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("definitief") shouldBe false
+                        resourceProp("vergrendeld") shouldBe true
+                        resourceProp("ondertekend") shouldBe true
+                        resourceProp("vergrendeld_door") shouldBe null
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("zaak_open") shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
-                        properties.zaaktypen shouldContainExactly listOf(zaakType.omschrijving)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldContainExactlyInAnyOrder userApplicationRolesForZaakType
+                        subjectZaaktypen shouldContainExactly listOf(zaakType.omschrijving)
                     }
                 }
             }
@@ -577,11 +597,11 @@ class PolicyServiceTest : BehaviorSpec({
             val enkelvoudigInformatieobject = createEnkelvoudigInformatieObject()
             val enkelvoudigInformatieObjectLock = createEnkelvoudigInformatieObjectLock()
             val expectedDocumentRights = createDocumentRechten()
-            val ruleQuerySlot = slot<RuleQuery<DocumentInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
-            every { opaEvaluationClient.readDocumentRechten(capture(ruleQuerySlot)) } returns RuleResponse(
-                expectedDocumentRights
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expectedDocumentRights).results
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns false
@@ -597,20 +617,20 @@ class PolicyServiceTest : BehaviorSpec({
                     documentRights shouldBe expectedDocumentRights
 
                     verify(exactly = 1) {
-                        opaEvaluationClient.readDocumentRechten(any<RuleQuery<DocumentInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.documentData) {
-                        definitief shouldBe false
-                        vergrendeld shouldBe false
-                        ondertekend shouldBe false
-                        vergrendeldDoor shouldBe null
-                        zaaktype shouldBe zaakType.omschrijving
-                        zaakOpen shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("definitief") shouldBe false
+                        resourceProp("vergrendeld") shouldBe false
+                        resourceProp("ondertekend") shouldBe false
+                        resourceProp("vergrendeld_door") shouldBe null
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("zaak_open") shouldBe true
                     }
-                    with(ruleQuerySlot.captured.input.subject) {
-                        id shouldBe loggedInUser.id
-                        properties.rollen shouldBe loggedInUser.roles
-                        properties.zaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUser.id
+                        subjectRollen shouldBe loggedInUser.roles
+                        subjectZaaktypen shouldBe loggedInUser.geautoriseerdeZaaktypen
                     }
                 }
             }
@@ -627,12 +647,12 @@ class PolicyServiceTest : BehaviorSpec({
             }
             val enkelvoudigInformatieObjectLock = createEnkelvoudigInformatieObjectLock()
             val expectedDocumentRights = createDocumentRechten()
-            val ruleQuerySlot = slot<RuleQuery<DocumentInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
 
             every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
             every {
-                opaEvaluationClient.readDocumentRechten(capture(ruleQuerySlot))
-            } returns RuleResponse(expectedDocumentRights)
+                accessService.searchActions(capture(requestSlot))
+            } returns ActionSearchResponse(results = toActionSearchResponse(expectedDocumentRights).results)
             every { loggedInUserInstance.get() } returns loggedInUser
             every { configurationService.featureFlagPabcIntegration() } returns false
 
@@ -647,15 +667,15 @@ class PolicyServiceTest : BehaviorSpec({
                     documentRights shouldBe expectedDocumentRights
 
                     verify(exactly = 1) {
-                        opaEvaluationClient.readDocumentRechten(any<RuleQuery<DocumentInput>>())
+                        accessService.searchActions(any<ActionSearchRequest>())
                     }
-                    with(ruleQuerySlot.captured.input.documentData) {
-                        definitief shouldBe false
-                        vergrendeld shouldBe true
-                        ondertekend shouldBe true
-                        vergrendeldDoor shouldBe null
-                        zaaktype shouldBe zaakType.omschrijving
-                        zaakOpen shouldBe true
+                    with(requestSlot.captured) {
+                        resourceProp("definitief") shouldBe false
+                        resourceProp("vergrendeld") shouldBe true
+                        resourceProp("ondertekend") shouldBe true
+                        resourceProp("vergrendeld_door") shouldBe null
+                        resourceProp("zaaktype") shouldBe zaakType.omschrijving
+                        resourceProp("zaak_open") shouldBe true
                     }
                 }
             }
@@ -680,10 +700,12 @@ class PolicyServiceTest : BehaviorSpec({
                 applicationRolesPerZaaktype = mapOf(zaaktype to pabcRolesForZaakType)
             )
 
-            val rqSlot = slot<RuleQuery<UserInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
             val expected = createOverigeRechten()
             every { loggedInUserInstance.get() } returns loggedInUserWithMappings
-            every { opaEvaluationClient.readOverigeRechten(capture(rqSlot)) } returns RuleResponse(expected)
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expected).results
+            )
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("calling readOverigeRechten with a zaaktype") {
@@ -692,12 +714,13 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("OPA receives rollen from PABC for that zaaktype and zaaktypen contains only that zaaktype") {
                     actual shouldBe expected
 
-                    verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
+                    verify(exactly = 1) { accessService.searchActions(any()) }
 
-                    val userData = rqSlot.captured.input.subject
-                    userData.id shouldBe loggedInUserWithMappings.id
-                    userData.properties.rollen shouldBe pabcRolesForZaakType
-                    userData.properties.zaaktypen shouldBe setOf(zaaktype)
+                    with(requestSlot.captured) {
+                        subjectId shouldBe loggedInUserWithMappings.id
+                        subjectRollen shouldBe pabcRolesForZaakType
+                        subjectZaaktypen shouldBe setOf(zaaktype)
+                    }
                 }
             }
         }
@@ -717,10 +740,12 @@ class PolicyServiceTest : BehaviorSpec({
                 applicationRolesPerZaaktype = emptyMap()
             )
 
-            val rqSlot = slot<RuleQuery<UserInput>>()
+            val requestSlot = slot<ActionSearchRequest>()
             val expected = createOverigeRechten()
             every { loggedInUserInstance.get() } returns loggedInUserLegacy
-            every { opaEvaluationClient.readOverigeRechten(capture(rqSlot)) } returns RuleResponse(expected)
+            every { accessService.searchActions(capture(requestSlot)) } returns ActionSearchResponse(
+                results = toActionSearchResponse(expected).results
+            )
             every { configurationService.featureFlagPabcIntegration() } returns false
 
             When("calling readOverigeRechten without a zaaktype") {
@@ -729,26 +754,28 @@ class PolicyServiceTest : BehaviorSpec({
                 Then("OPA receives functional roles and original geautoriseerde zaaktypen") {
                     actual shouldBe expected
 
-                    verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
+                    verify(exactly = 1) { accessService.searchActions(any()) }
 
-                    val userData = rqSlot.captured.input.subject
-                    userData.properties.rollen shouldBe roles
-                    userData.properties.zaaktypen shouldBe authorizedZaaktypes
+                    with(requestSlot.captured) {
+                        subjectRollen shouldBe roles
+                        subjectZaaktypen shouldBe authorizedZaaktypes
+                    }
                 }
             }
 
             When("calling readOverigeRechten with a zaaktype") {
-                clearMocks(opaEvaluationClient, answers = false, recordedCalls = true, exclusionRules = false)
+                clearMocks(accessService, answers = false, recordedCalls = true, exclusionRules = false)
                 val actual = policyService.readOverigeRechten("redundant-zaaktype")
 
                 Then("OPA receives roles with the authorized zaaktypes") {
                     actual shouldBe expected
 
-                    verify(exactly = 1) { opaEvaluationClient.readOverigeRechten(any()) }
+                    verify(exactly = 1) { accessService.searchActions(any()) }
 
-                    val userData = rqSlot.captured.input.subject
-                    userData.properties.rollen shouldBe roles
-                    userData.properties.zaaktypen shouldBe authorizedZaaktypes
+                    with(requestSlot.captured) {
+                        subjectRollen shouldBe roles
+                        subjectZaaktypen shouldBe authorizedZaaktypes
+                    }
                 }
             }
         }

@@ -159,6 +159,11 @@ dependencies {
         // and these transitive dependencies may cause conflicts with the RESTEasy version provided by WildFly
         exclude(group = "org.jboss.resteasy")
     }
+    implementation("com.dataversation.authzen:authzen-api:0.1.0")
+    // Optional AuthZEN transports — uncomment to enable the corresponding backend at runtime.
+    // Only loaded if AUTHORIZATION_SERVICE_BACKEND is set to the matching value.
+    // implementation("com.dataversation.authzen:authzen-http:0.1.0")  // for authzen-http backend
+    // implementation("com.dataversation.authzen:authzen-grpc:0.1.0")  // for authzen-grpc backend
     implementation(libs.jacobras.human.readable)
     implementation(libs.okhttp)
     implementation(libs.okhttp.urlconnection)
@@ -205,6 +210,9 @@ dependencies {
     // runtime this is provided for by the WildFly runtime environment
     // for our unit tests we use the reference implementation
     testImplementation(libs.glassfish.expressly)
+    // AuthZEN transports for integration testing against a PDP (e.g. Topaz)
+    testImplementation("com.dataversation.authzen:authzen-http:0.1.0")
+    testImplementation("com.dataversation.authzen:authzen-grpc:0.1.0")
 
     jacocoAgentJarForItest(variantOf(libs.jacoco.agent) { classifier("runtime") })
 }
