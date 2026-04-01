@@ -9,31 +9,31 @@ derivedRoles:
   name: zac_roles
   definitions:
     - name: behandelaar
-      parentRoles: ["_"]
+      parentRoles: ["user"]
       condition:
         match:
           expr: '"behandelaar" in request.principal.attr.rollen'
 
     - name: raadpleger
-      parentRoles: ["_"]
+      parentRoles: ["user"]
       condition:
         match:
           expr: '"raadpleger" in request.principal.attr.rollen'
 
     - name: coordinator
-      parentRoles: ["_"]
+      parentRoles: ["user"]
       condition:
         match:
           expr: '"coordinator" in request.principal.attr.rollen'
 
     - name: recordmanager
-      parentRoles: ["_"]
+      parentRoles: ["user"]
       condition:
         match:
           expr: '"recordmanager" in request.principal.attr.rollen'
 
     - name: beheerder
-      parentRoles: ["_"]
+      parentRoles: ["user"]
       condition:
         match:
           expr: '"beheerder" in request.principal.attr.rollen'

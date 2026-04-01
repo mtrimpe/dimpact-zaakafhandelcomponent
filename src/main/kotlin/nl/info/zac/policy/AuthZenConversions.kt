@@ -42,7 +42,7 @@ fun <T> nl.info.zac.policy.input.Resource<T>.toAuthZenResource(): AuthZenResourc
     }
     return AuthZenResource(
         type = type,
-        id = id,
+        id = id ?: "_",
         properties = propsMap
     )
 }
@@ -92,8 +92,10 @@ fun UserInput.toEvaluationsRequest(): EvaluationsRequest {
     return EvaluationsRequest(
         subject = this.subject.toAuthZenSubject(),
         resource = resource,
+        // Non-empty context required because Cerbos rejects empty context objects
+        context = mapOf("source" to "zac"),
         evaluations = actions.map { actionName ->
-            EvaluationRequest(action = AuthZenAction(name = actionName))
+            EvaluationRequest(action = AuthZenAction(name = actionName), context = mapOf("source" to "zac"))
         }
     )
 }

@@ -266,6 +266,7 @@ services:
     command: run --server --addr=0.0.0.0:8181 --log-level debug
     ports:
       - "8181:8181"
+    profiles: ["opa"]
 
   # Topaz AuthZEN PDP (per-action evaluation via Rego, with AuthZEN proxy)
   topaz:
@@ -463,7 +464,7 @@ services:
       - ./src/test/resources/policies:/home/tests
       - ./src/main/resources/policies:/home/policies
     entrypoint: [ "opa", "test", "/home/policies", "/home/tests" ]
-    profiles: [ "itest" ]
+    profiles: [ "opa" ]
 
   office-converter:
     # When updating this Docker image please also update the Office Converter version accordingly in our Helm Chart (see values.yaml).
@@ -884,9 +885,8 @@ services:
       - OFFICE_CONVERTER_CLIENT_MP_REST_URL=http://office-converter:8080
       - OBJECTS_API_CLIENT_MP_REST_URL=http://objecten-api.local:8000
       - OBJECTS_API_TOKEN=fakeZacObjectsToken
-      - AUTHORIZATION_SERVICE_BACKEND=${AUTHORIZATION_SERVICE_BACKEND:-opa}
+      - AUTHORIZATION_SERVICE_BACKEND=${AUTHORIZATION_SERVICE_BACKEND:-kotlin}
       - AUTHZEN_PDP_URL=${AUTHZEN_PDP_URL:-}
-      - OPA_API_CLIENT_MP_REST_URL=http://opa:8181
       - OPEN_FORMS_URL=http://localhost:9999 # fake for now
       - OPEN_NOTIFICATIONS_API_SECRET_KEY=openNotificatiesApiSecretKey
       - PABC_API_CLIENT_MP_REST_URL=${PABC_API_CLIENT_MP_REST_URL}

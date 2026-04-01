@@ -101,8 +101,9 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
         private val zacDockerImage = System.getProperty("zacDockerImage") ?: ZAC_DEFAULT_DOCKER_IMAGE
         private val skipDockerComposeStart = System.getenv(DO_NOT_START_DOCKER_COMPOSE_ENV_VAR)?.toBoolean() ?: false
         private val skipContainerCleanup = System.getenv(TESTCONTAINERS_RYUK_DISABLED_ENV_VAR)?.toBoolean() ?: false
-        private val authorizationBackend = System.getenv(AUTHORIZATION_BACKEND_ENV_VAR) ?: "opa"
-        private val useAlternateBackend = authorizationBackend != "opa"
+        private val authorizationBackend = System.getenv(AUTHORIZATION_BACKEND_ENV_VAR) ?: "kotlin"
+        private val useAlternateBackend = authorizationBackend !in listOf("kotlin", "opa")
+        private val needsBackendEnvVar = authorizationBackend != "kotlin"
 
         // All variables below have to be overridable in the docker-compose.yaml file
         private val dockerComposeOverrideEnvironment = mapOf(
@@ -132,23 +133,21 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                 " -jar zaakafhandelcomponent.jar",
             "ZAC_DOCKER_IMAGE" to zacDockerImage,
             "ZAC_INTERNAL_ENDPOINTS_API_KEY" to ZAC_INTERNAL_ENDPOINTS_API_KEY
-        ) + if (useAlternateBackend) {
-            buildMap {
+        ) + buildMap {
+            if (needsBackendEnvVar) {
                 put("AUTHORIZATION_SERVICE_BACKEND", authorizationBackend)
-                // Each backend connects directly to its PDP (no proxy containers)
-                when (authorizationBackend) {
-                    "topaz" -> put("AUTHZEN_PDP_URL", "http://topaz:8383")
-                    "cerbos" -> put("AUTHZEN_PDP_URL", "http://cerbos:3592")
-                    "spicedb" -> {
-                        put("AUTHZEN_PDP_URL", "http://spicedb:8090")
-                        put("SPICEDB_TOKEN", "test")
-                    }
-                    // AuthzForce base URL — the library auto-discovers the domain ID
-                    "authzforce" -> put("AUTHZEN_PDP_URL", "http://authzforce:8080/authzforce-ce")
-                }
             }
-        } else {
-            emptyMap()
+            // Each backend connects directly to its PDP (no proxy containers)
+            when (authorizationBackend) {
+                "topaz" -> put("AUTHZEN_PDP_URL", "http://topaz:8383")
+                "cerbos" -> put("AUTHZEN_PDP_URL", "http://cerbos:3592")
+                "spicedb" -> {
+                    put("AUTHZEN_PDP_URL", "http://spicedb:8090")
+                    put("SPICEDB_TOKEN", "test")
+                }
+                // AuthzForce base URL — the library auto-discovers the domain ID
+                "authzforce" -> put("AUTHZEN_PDP_URL", "http://authzforce:8080/authzforce-ce")
+            }
         }
     }
 
@@ -278,11 +277,6 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                 Slf4jLogConsumer((logger as DelegatingKLogger<Logger>).underlyingLogger).withPrefix(
                     "ZAC"
                 )
-            )
-            .waitingFor(
-                "opa-tests",
-                OneShotStartupWaitStrategy()
-                    .withStartupTimeout(10.seconds.toJavaDuration())
             )
             .waitingFor(
                 "openzaak.local",

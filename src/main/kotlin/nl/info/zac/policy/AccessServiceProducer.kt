@@ -8,7 +8,7 @@ import com.dataversation.authzen.AccessService
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Produces
 import jakarta.inject.Inject
-import nl.info.zac.policy.opa.OpaAccessService
+import nl.info.zac.policy.service.AccessServiceImpl
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import okhttp3.OkHttpClient
@@ -20,11 +20,11 @@ import java.util.logging.Logger
  * CDI producer that selects the [AccessService] implementation based on configuration.
  *
  * Each backend demonstrates a different integration pattern:
- * - `opa` (default): CDI/MicroProfile REST client to OPA Data API
- * - `topaz`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
- * - `cerbos`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
- * - `spicedb`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
- * - `authzforce`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
+ * - `kotlin` (default): in-process Kotlin policies — no external PDP needed
+ * - `topaz`: Topaz Rego engine via native `is` API
+ * - `cerbos`: Cerbos 0.51.0+ via native AuthZEN API
+ * - `spicedb`: SpiceDB via Permissions API
+ * - `authzforce`: AuthzForce XACML 3.0 PDP via XACML JSON + MDP
  * - `http`: generic HTTP AuthZEN PDP
  * - `grpc`: generic gRPC AuthZEN PDP
  */
@@ -32,16 +32,15 @@ import java.util.logging.Logger
 @AllOpen
 @NoArgConstructor
 class AccessServiceProducer @Inject constructor(
-    @ConfigProperty(name = "AUTHORIZATION_SERVICE_BACKEND", defaultValue = "opa")
+    @ConfigProperty(name = "AUTHORIZATION_SERVICE_BACKEND", defaultValue = "kotlin")
     private val backend: String,
     @ConfigProperty(name = "AUTHZEN_PDP_URL")
-    private val authZenPdpUrl: Optional<String>,
-    private val opaAccessService: OpaAccessService
+    private val authZenPdpUrl: Optional<String>
 ) {
     @Produces
     @ApplicationScoped
     fun produce(): AccessService = when (backend.lowercase()) {
-        "opa" -> opaAccessService
+        "kotlin" -> AccessServiceImpl()
         "topaz" -> createTopazTransport()
         "cerbos" -> createCerbosTransport()
         "spicedb" -> createSpiceDbTransport()
@@ -50,7 +49,7 @@ class AccessServiceProducer @Inject constructor(
         "grpc" -> createAuthZenGrpcTransport()
         else -> throw IllegalArgumentException(
             "Unknown authorization backend: '$backend'. " +
-                "Must be 'opa', 'topaz', 'cerbos', 'spicedb', 'authzforce', 'http', or 'grpc'."
+                "Must be 'kotlin', 'topaz', 'cerbos', 'spicedb', 'authzforce', 'http', or 'grpc'."
         )
     }
 
@@ -73,14 +72,8 @@ class AccessServiceProducer @Inject constructor(
         throw IllegalStateException("Backend 'topaz' requires authzen-topaz on the classpath.", e)
     }
 
-    private fun createCerbosTransport(): AccessService = try {
-        val clazz = Class.forName("com.dataversation.authzen.cerbos.CerbosAccessService")
-        val url = requirePdpUrl()
-        clazz.getConstructor(String::class.java, OkHttpClient::class.java)
-            .newInstance(url, OkHttpClient()) as AccessService
-    } catch (e: ClassNotFoundException) {
-        throw IllegalStateException("Backend 'cerbos' requires authzen-cerbos on the classpath.", e)
-    }
+    private fun createCerbosTransport(): AccessService =
+        createAuthZenHttpTransport()
 
     @Suppress("UNCHECKED_CAST")
     private fun createSpiceDbTransport(): AccessService = try {
