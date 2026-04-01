@@ -1,0 +1,225 @@
+#
+# SPDX-FileCopyrightText: 2025 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  version: "default"
+  importDerivedRoles:
+    - zac_roles
+  resource: "zaak"
+
+  variables:
+    local:
+      zaaktype_allowed: >-
+        !has(request.principal.attr.zaaktypen) ||
+        request.resource.attr.zaaktype in request.principal.attr.zaaktypen
+      open: "request.resource.attr.open == true"
+      heropend: "request.resource.attr.heropend == true"
+      opgeschort: "request.resource.attr.opgeschort == true"
+      verlengd: "request.resource.attr.verlengd == true"
+      intake: "request.resource.attr.intake == true"
+      besloten: "request.resource.attr.besloten == true"
+
+  rules:
+    # lezen
+    - actions: ["lezen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["raadpleger"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # wijzigen, wijzigen_locatie
+    - actions: ["wijzigen", "wijzigen_locatie"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    - actions: ["wijzigen", "wijzigen_locatie"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # toekennen
+    - actions: ["toekennen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    - actions: ["toekennen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # behandelen
+    - actions: ["behandelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # afbreken
+    - actions: ["afbreken"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # heropenen
+    - actions: ["heropenen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # bekijken_zaakdata
+    - actions: ["bekijken_zaakdata"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["beheerder"]
+
+    # wijzigen_doorlooptijd
+    - actions: ["wijzigen_doorlooptijd"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    # verlengen
+    - actions: ["verlengen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+              - expr: "!V.heropend"
+              - expr: "!V.opgeschort"
+              - expr: "!V.verlengd"
+
+    # opschorten
+    - actions: ["opschorten"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+              - expr: "!V.heropend"
+              - expr: "!V.opgeschort"
+
+    # hervatten
+    - actions: ["hervatten"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # creeren_document, versturen_email, versturen_ontvangstbevestiging, starten_taak, verlengen_doorlooptijd
+    - actions:
+        - "creeren_document"
+        - "versturen_email"
+        - "versturen_ontvangstbevestiging"
+        - "starten_taak"
+        - "verlengen_doorlooptijd"
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    # toevoegen_document, koppelen
+    - actions: ["toevoegen_document", "koppelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    - actions: ["toevoegen_document", "koppelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # toevoegen_initiator_persoon, toevoegen_initiator_bedrijf, verwijderen_initiator,
+    # toevoegen_betrokkene_persoon, toevoegen_betrokkene_bedrijf, verwijderen_betrokkene,
+    # toevoegen_bag_object
+    - actions:
+        - "toevoegen_initiator_persoon"
+        - "toevoegen_initiator_bedrijf"
+        - "verwijderen_initiator"
+        - "toevoegen_betrokkene_persoon"
+        - "toevoegen_betrokkene_bedrijf"
+        - "verwijderen_betrokkene"
+        - "toevoegen_bag_object"
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+
+    - actions:
+        - "toevoegen_initiator_persoon"
+        - "toevoegen_initiator_bedrijf"
+        - "verwijderen_initiator"
+        - "toevoegen_betrokkene_persoon"
+        - "toevoegen_betrokkene_bedrijf"
+        - "verwijderen_betrokkene"
+        - "toevoegen_bag_object"
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # vastleggen_besluit
+    - actions: ["vastleggen_besluit"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
+              - expr: "!V.intake"
+              - expr: V.besloten

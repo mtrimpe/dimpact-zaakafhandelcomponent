@@ -93,6 +93,7 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
     companion object {
         private const val DO_NOT_START_DOCKER_COMPOSE_ENV_VAR = "DO_NOT_START_DOCKER_COMPOSE"
         private const val TESTCONTAINERS_RYUK_DISABLED_ENV_VAR = "TESTCONTAINERS_RYUK_DISABLED"
+        private const val AUTHORIZATION_BACKEND_ENV_VAR = "AUTHORIZATION_SERVICE_BACKEND"
 
         private val logger = KotlinLogging.logger {}
         private val itestHttpClient = ItestHttpClient()
@@ -100,6 +101,8 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
         private val zacDockerImage = System.getProperty("zacDockerImage") ?: ZAC_DEFAULT_DOCKER_IMAGE
         private val skipDockerComposeStart = System.getenv(DO_NOT_START_DOCKER_COMPOSE_ENV_VAR)?.toBoolean() ?: false
         private val skipContainerCleanup = System.getenv(TESTCONTAINERS_RYUK_DISABLED_ENV_VAR)?.toBoolean() ?: false
+        private val authorizationBackend = System.getenv(AUTHORIZATION_BACKEND_ENV_VAR) ?: "opa"
+        private val useAlternateBackend = authorizationBackend != "opa"
 
         // All variables below have to be overridable in the docker-compose.yaml file
         private val dockerComposeOverrideEnvironment = mapOf(
@@ -129,7 +132,24 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                 " -jar zaakafhandelcomponent.jar",
             "ZAC_DOCKER_IMAGE" to zacDockerImage,
             "ZAC_INTERNAL_ENDPOINTS_API_KEY" to ZAC_INTERNAL_ENDPOINTS_API_KEY
-        )
+        ) + if (useAlternateBackend) {
+            buildMap {
+                put("AUTHORIZATION_SERVICE_BACKEND", authorizationBackend)
+                // Each backend connects directly to its PDP (no proxy containers)
+                when (authorizationBackend) {
+                    "topaz" -> put("AUTHZEN_PDP_URL", "http://topaz:8383")
+                    "cerbos" -> put("AUTHZEN_PDP_URL", "http://cerbos:3592")
+                    "spicedb" -> {
+                        put("AUTHZEN_PDP_URL", "http://spicedb:8090")
+                        put("SPICEDB_TOKEN", "test")
+                    }
+                    // AuthzForce base URL — the library auto-discovers the domain ID
+                    "authzforce" -> put("AUTHZEN_PDP_URL", "http://authzforce:8080/authzforce-ce")
+                }
+            }
+        } else {
+            emptyMap()
+        }
     }
 
     /**
@@ -215,19 +235,26 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
             logger.info { "Stopped ZAC Docker container" }
         }
         // now stop the rest of the Docker Compose containers (TestContainers just kills and removes the containers)
-        dockerComposeContainer.withOptions("--profile itest").stop()
+        val stopProfiles = mutableListOf("--profile itest")
+        if (useAlternateBackend) {
+            stopProfiles.add("--profile $authorizationBackend")
+        }
+        dockerComposeContainer.withOptions(*stopProfiles.toTypedArray()).stop()
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("UNCHECKED_CAST", "SpreadOperator", "LongMethod")
     private fun createDockerComposeContainer(): ComposeContainer {
         logger.info { "Using Docker Compose environment variables: $dockerComposeOverrideEnvironment" }
 
+        val profiles = mutableListOf("--profile zac", "--profile itest")
+        if (useAlternateBackend) {
+            profiles.add("--profile $authorizationBackend")
+            logger.info { "Using $authorizationBackend as authorization backend" }
+        }
+
         return ComposeContainer("zac-itest-", File("docker-compose.yaml"))
             .withEnv(dockerComposeOverrideEnvironment)
-            .withOptions(
-                "--profile zac",
-                "--profile itest"
-            )
+            .withOptions(*profiles.toTypedArray())
             .withLogConsumer(
                 "solr",
                 Slf4jLogConsumer((logger as DelegatingKLogger<Logger>).underlyingLogger).withPrefix(
@@ -271,7 +298,38 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                 "zac",
                 Wait.forLogMessage(".* WildFly .* started .*", 1)
                     .withStartupTimeout(3.minutes.toJavaDuration())
-            )
+            ).let { container ->
+                when (authorizationBackend) {
+                    "topaz" -> container.waitingFor(
+                        "topaz",
+                        Wait.forLogMessage(".*Topaz authorizer is ready.*", 1)
+                            .withStartupTimeout(2.minutes.toJavaDuration())
+                    )
+                    "cerbos" -> container.waitingFor(
+                        "cerbos",
+                        Wait.forLogMessage(".*Starting HTTP server.*", 1)
+                            .withStartupTimeout(2.minutes.toJavaDuration())
+                    )
+                    "spicedb" -> container
+                        .waitingFor(
+                            "spicedb",
+                            Wait.forHealthcheck()
+                                .withStartupTimeout(2.minutes.toJavaDuration())
+                        )
+                        .waitingFor(
+                            "spicedb-init",
+                            OneShotStartupWaitStrategy()
+                                .withStartupTimeout(2.minutes.toJavaDuration())
+                        )
+                    "authzforce" -> container
+                        .waitingFor(
+                            "authzforce-init",
+                            OneShotStartupWaitStrategy()
+                                .withStartupTimeout(2.minutes.toJavaDuration())
+                        )
+                    else -> container
+                }
+            }
     }
 
     /**

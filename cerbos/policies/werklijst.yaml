@@ -1,0 +1,38 @@
+#
+# SPDX-FileCopyrightText: 2025 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  version: "default"
+  importDerivedRoles:
+    - zac_roles
+  resource: "werklijst"
+
+  rules:
+    # inbox
+    - actions: ["inbox"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["coordinator"]
+
+    # ontkoppelde_documenten_verwijderen, inbox_productaanvragen_verwijderen
+    - actions: ["ontkoppelde_documenten_verwijderen", "inbox_productaanvragen_verwijderen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+
+    # zaken_taken
+    - actions: ["zaken_taken"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["raadpleger"]
+
+    # zaken_taken_verdelen
+    - actions: ["zaken_taken_verdelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["coordinator"]
+
+    # zaken_taken_exporteren
+    - actions: ["zaken_taken_exporteren"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["beheerder"]

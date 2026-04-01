@@ -1,0 +1,39 @@
+#
+# SPDX-FileCopyrightText: 2025 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+---
+apiVersion: "api.cerbos.dev/v1"
+derivedRoles:
+  name: zac_roles
+  definitions:
+    - name: behandelaar
+      parentRoles: ["_"]
+      condition:
+        match:
+          expr: '"behandelaar" in request.principal.attr.rollen'
+
+    - name: raadpleger
+      parentRoles: ["_"]
+      condition:
+        match:
+          expr: '"raadpleger" in request.principal.attr.rollen'
+
+    - name: coordinator
+      parentRoles: ["_"]
+      condition:
+        match:
+          expr: '"coordinator" in request.principal.attr.rollen'
+
+    - name: recordmanager
+      parentRoles: ["_"]
+      condition:
+        match:
+          expr: '"recordmanager" in request.principal.attr.rollen'
+
+    - name: beheerder
+      parentRoles: ["_"]
+      condition:
+        match:
+          expr: '"beheerder" in request.principal.attr.rollen'

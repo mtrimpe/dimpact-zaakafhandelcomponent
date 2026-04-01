@@ -41,6 +41,11 @@ repositories {
     maven("https://repository.jboss.org/nexus/content/groups/public-jboss")
 }
 
+// Always re-resolve SNAPSHOT dependencies so local publishToMavenLocal updates are picked up immediately.
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor(0, "seconds")
+}
+
 buildscript {
     dependencies {
         // Temporary workaround that enables the Smallrye OpenAPI Gradle plugin to be able to scan Kotlin metadata.
@@ -159,11 +164,15 @@ dependencies {
         // and these transitive dependencies may cause conflicts with the RESTEasy version provided by WildFly
         exclude(group = "org.jboss.resteasy")
     }
-    implementation("com.dataversation.authzen:authzen-api:0.1.0")
-    // Optional AuthZEN transports — uncomment to enable the corresponding backend at runtime.
-    // Only loaded if AUTHORIZATION_SERVICE_BACKEND is set to the matching value.
-    // implementation("com.dataversation.authzen:authzen-http:0.1.0")  // for authzen-http backend
-    // implementation("com.dataversation.authzen:authzen-grpc:0.1.0")  // for authzen-grpc backend
+    implementation("com.dataversation.authzen:authzen-api:0.2.0-SNAPSHOT")
+    // Optional AuthZEN transports — loaded dynamically by AccessServiceProducer
+    // when AUTHORIZATION_SERVICE_BACKEND is set to the corresponding value.
+    runtimeOnly("com.dataversation.authzen:authzen-http:0.2.0-SNAPSHOT")
+    runtimeOnly("com.dataversation.authzen:authzen-grpc:0.2.0-SNAPSHOT")
+    runtimeOnly("com.dataversation.authzen:authzen-topaz:0.2.0-SNAPSHOT")
+    runtimeOnly("com.dataversation.authzen:authzen-cerbos:0.2.0-SNAPSHOT")
+    runtimeOnly("com.dataversation.authzen:authzen-spicedb:0.2.0-SNAPSHOT")
+    runtimeOnly("com.dataversation.authzen:authzen-authzforce:0.2.0-SNAPSHOT")
     implementation(libs.jacobras.human.readable)
     implementation(libs.okhttp)
     implementation(libs.okhttp.urlconnection)
@@ -211,8 +220,8 @@ dependencies {
     // for our unit tests we use the reference implementation
     testImplementation(libs.glassfish.expressly)
     // AuthZEN transports for integration testing against a PDP (e.g. Topaz)
-    testImplementation("com.dataversation.authzen:authzen-http:0.1.0")
-    testImplementation("com.dataversation.authzen:authzen-grpc:0.1.0")
+    testImplementation("com.dataversation.authzen:authzen-http:0.2.0-SNAPSHOT")
+    testImplementation("com.dataversation.authzen:authzen-grpc:0.2.0-SNAPSHOT")
 
     jacocoAgentJarForItest(variantOf(libs.jacoco.agent) { classifier("runtime") })
 }

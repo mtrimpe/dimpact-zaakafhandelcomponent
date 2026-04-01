@@ -4,32 +4,20 @@
  */
 package nl.info.zac.policy.output
 
-import jakarta.json.bind.annotation.JsonbCreator
-import jakarta.json.bind.annotation.JsonbProperty
-import nl.info.client.opa.model.OpaRuleResult
-import nl.info.zac.policy.input.Action
-
 data class TaakRechten(
     val lezen: Boolean,
     val wijzigen: Boolean,
     val toekennen: Boolean,
     val creerenDocument: Boolean,
     val toevoegenDocument: Boolean
-) : OpaRuleResult {
+) {
     companion object {
-        @JsonbCreator
-        @JvmStatic
-        fun fromActionSearch(
-            @JsonbProperty("results") results: List<Action>
-        ): TaakRechten {
-            val names = results.map { it.name }.toSet()
-            return TaakRechten(
-                lezen = "lezen" in names,
-                wijzigen = "wijzigen" in names,
-                toekennen = "toekennen" in names,
-                creerenDocument = "creeren_document" in names,
-                toevoegenDocument = "toevoegen_document" in names
-            )
-        }
+        fun fromEvaluations(decisions: Map<String, Boolean>) = TaakRechten(
+            lezen = decisions["lezen"] ?: false,
+            wijzigen = decisions["wijzigen"] ?: false,
+            toekennen = decisions["toekennen"] ?: false,
+            creerenDocument = decisions["creeren_document"] ?: false,
+            toevoegenDocument = decisions["toevoegen_document"] ?: false
+        )
     }
 }

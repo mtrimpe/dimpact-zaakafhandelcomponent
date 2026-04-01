@@ -1,0 +1,155 @@
+#
+# SPDX-FileCopyrightText: 2025 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  version: "default"
+  importDerivedRoles:
+    - zac_roles
+  resource: "document"
+
+  variables:
+    local:
+      zaaktype_allowed: >-
+        !has(request.resource.attr.zaaktype) ||
+        !has(request.principal.attr.zaaktypen) ||
+        request.resource.attr.zaaktype in request.principal.attr.zaaktypen
+      unlocked_or_own_lock: >-
+        request.resource.attr.vergrendeld == false ||
+        (request.resource.attr.vergrendeld == true &&
+         request.resource.attr.vergrendeld_door == request.principal.id)
+      zaak_open: "request.resource.attr.zaak_open == true"
+      definitief: "request.resource.attr.definitief == true"
+      vergrendeld: "request.resource.attr.vergrendeld == true"
+
+  rules:
+    # lezen
+    - actions: ["lezen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["raadpleger"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # wijzigen
+    - actions: ["wijzigen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.zaak_open
+              - expr: "!V.definitief"
+              - expr: V.unlocked_or_own_lock
+
+    - actions: ["wijzigen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # verwijderen
+    - actions: ["verwijderen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.zaak_open
+              - expr: "!V.definitief"
+              - expr: "!V.vergrendeld"
+
+    - actions: ["verwijderen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: "!V.vergrendeld"
+
+    # vergrendelen
+    - actions: ["vergrendelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.zaak_open
+
+    # ontgrendelen
+    - actions: ["ontgrendelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: "request.resource.attr.vergrendeld_door == request.principal.id"
+
+    - actions: ["ontgrendelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # ondertekenen
+    - actions: ["ondertekenen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.zaak_open
+              - expr: V.unlocked_or_own_lock
+
+    # toevoegen_nieuwe_versie, verplaatsen, ontkoppelen
+    - actions: ["toevoegen_nieuwe_versie", "verplaatsen", "ontkoppelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.zaak_open
+              - expr: "!V.definitief"
+              - expr: V.unlocked_or_own_lock
+
+    - actions: ["toevoegen_nieuwe_versie", "verplaatsen", "ontkoppelen"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["recordmanager"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # downloaden
+    - actions: ["downloaden"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["raadpleger"]
+      condition:
+        match:
+          expr: V.zaaktype_allowed
+
+    # converteren
+    - actions: ["converteren"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: V.definitief
+              - expr: V.zaaktype_allowed

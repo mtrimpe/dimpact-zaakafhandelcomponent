@@ -1,0 +1,181 @@
+/** ZAC authorization schema for SpiceDB.
+ *  Models the same authorization logic as the Rego policies using
+ *  SpiceDB relations + caveats for conditional permissions.
+ */
+
+// ─── Caveats (conditions on resource properties) ───
+
+caveat zaak_is_open(open bool) {
+    open == true
+}
+
+caveat zaak_can_verlengen(open bool, heropend bool, opgeschort bool, verlengd bool) {
+    open == true && heropend != true && opgeschort != true && verlengd != true
+}
+
+caveat zaak_can_opschorten(open bool, heropend bool, opgeschort bool) {
+    open == true && heropend != true && opgeschort != true
+}
+
+caveat zaak_can_vastleggen_besluit(open bool, intake bool, besloten bool) {
+    open == true && intake != true && besloten == true
+}
+
+caveat taak_is_open(open bool) {
+    open == true
+}
+
+caveat doc_zaak_open(zaak_open bool) {
+    zaak_open == true
+}
+
+caveat doc_can_edit(zaak_open bool, definitief bool, vergrendeld bool, vergrendeld_door string, caller_id string) {
+    zaak_open == true && definitief != true && (vergrendeld != true || vergrendeld_door == caller_id)
+}
+
+caveat doc_can_delete(zaak_open bool, definitief bool, vergrendeld bool) {
+    zaak_open == true && definitief != true && vergrendeld != true
+}
+
+caveat doc_rm_can_delete(vergrendeld bool) {
+    vergrendeld != true
+}
+
+caveat doc_unlocked_or_own_lock(zaak_open bool, vergrendeld bool, vergrendeld_door string, caller_id string) {
+    zaak_open == true && (vergrendeld != true || vergrendeld_door == caller_id)
+}
+
+caveat doc_own_lock(vergrendeld_door string, caller_id string) {
+    vergrendeld_door == caller_id
+}
+
+caveat doc_is_definitief(definitief bool) {
+    definitief == true
+}
+
+// ─── Types ───
+
+definition user {}
+
+definition role {
+    relation member: user
+}
+
+definition zaak {
+    relation raadpleger: role#member
+    relation behandelaar: role#member
+    relation coordinator: role#member
+    relation recordmanager: role#member
+    relation beheerder: role#member
+
+    // Unconditional
+    permission lezen = raadpleger
+    permission behandelen = behandelaar
+    permission afbreken = behandelaar
+    permission heropenen = recordmanager
+    permission bekijken_zaakdata = beheerder
+    permission hervatten = behandelaar
+
+    // Conditional: open
+    relation behandelaar_when_open: role#member with zaak_is_open
+    permission wijzigen = behandelaar_when_open + recordmanager
+    permission toekennen = behandelaar_when_open + recordmanager
+    permission wijzigen_doorlooptijd = behandelaar_when_open
+    permission creeren_document = behandelaar_when_open
+    permission toevoegen_document = behandelaar_when_open + recordmanager
+    permission koppelen = behandelaar_when_open + recordmanager
+    permission versturen_email = behandelaar_when_open
+    permission versturen_ontvangstbevestiging = behandelaar_when_open
+    permission toevoegen_initiator_persoon = behandelaar_when_open + recordmanager
+    permission toevoegen_initiator_bedrijf = behandelaar_when_open + recordmanager
+    permission verwijderen_initiator = behandelaar_when_open + recordmanager
+    permission toevoegen_betrokkene_persoon = behandelaar_when_open + recordmanager
+    permission toevoegen_betrokkene_bedrijf = behandelaar_when_open + recordmanager
+    permission verwijderen_betrokkene = behandelaar_when_open + recordmanager
+    permission toevoegen_bag_object = behandelaar_when_open + recordmanager
+    permission starten_taak = behandelaar_when_open
+    permission verlengen_doorlooptijd = behandelaar_when_open
+    permission wijzigen_locatie = behandelaar_when_open + recordmanager
+
+    // Special conditions
+    relation behandelaar_can_verlengen: role#member with zaak_can_verlengen
+    permission verlengen = behandelaar_can_verlengen
+
+    relation behandelaar_can_opschorten: role#member with zaak_can_opschorten
+    permission opschorten = behandelaar_can_opschorten
+
+    relation behandelaar_can_vastleggen_besluit: role#member with zaak_can_vastleggen_besluit
+    permission vastleggen_besluit = behandelaar_can_vastleggen_besluit
+}
+
+definition taak {
+    relation raadpleger: role#member
+    relation behandelaar: role#member
+
+    permission lezen = raadpleger
+    permission wijzigen = behandelaar
+    permission toekennen = behandelaar
+
+    relation behandelaar_when_open: role#member with taak_is_open
+    permission creeren_document = behandelaar_when_open
+    permission toevoegen_document = behandelaar_when_open
+}
+
+definition document {
+    relation raadpleger: role#member
+    relation behandelaar: role#member
+    relation recordmanager: role#member
+
+    permission lezen = raadpleger
+    permission downloaden = raadpleger
+
+    relation behandelaar_zaak_open: role#member with doc_zaak_open
+    relation behandelaar_can_edit: role#member with doc_can_edit
+    relation behandelaar_can_delete: role#member with doc_can_delete
+    relation rm_not_locked: role#member with doc_rm_can_delete
+    relation behandelaar_unlock_or_own: role#member with doc_unlocked_or_own_lock
+    relation behandelaar_own_lock: role#member with doc_own_lock
+    relation behandelaar_definitief: role#member with doc_is_definitief
+
+    permission wijzigen = behandelaar_can_edit + recordmanager
+    permission verwijderen = behandelaar_can_delete + rm_not_locked
+    permission vergrendelen = behandelaar_zaak_open
+    permission ontgrendelen = behandelaar_own_lock + recordmanager
+    permission ondertekenen = behandelaar_unlock_or_own
+    permission toevoegen_nieuwe_versie = behandelaar_can_edit + recordmanager
+    permission verplaatsen = behandelaar_can_edit + recordmanager
+    permission ontkoppelen = behandelaar_can_edit + recordmanager
+    permission converteren = behandelaar_definitief
+}
+
+definition zaak_notitie {
+    relation raadpleger: role#member
+    relation behandelaar: role#member
+
+    permission lezen = raadpleger
+    permission wijzigen = behandelaar
+}
+
+definition application {
+    relation behandelaar: role#member
+    relation beheerder: role#member
+    relation raadpleger: role#member
+
+    permission starten_zaak = behandelaar
+    permission beheren = beheerder
+    permission zoeken = raadpleger
+}
+
+definition werklijst {
+    relation raadpleger: role#member
+    relation coordinator: role#member
+    relation recordmanager: role#member
+    relation beheerder: role#member
+
+    permission inbox = coordinator
+    permission ontkoppelde_documenten_verwijderen = recordmanager
+    permission inbox_productaanvragen_verwijderen = recordmanager
+    permission zaken_taken = raadpleger
+    permission zaken_taken_verdelen = coordinator
+    permission zaken_taken_exporteren = beheerder
+}

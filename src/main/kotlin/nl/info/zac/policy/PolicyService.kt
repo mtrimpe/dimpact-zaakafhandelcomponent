@@ -34,11 +34,13 @@ import nl.info.zac.policy.input.NotitieInput
 import nl.info.zac.policy.input.OverigeInput
 import nl.info.zac.policy.input.TaakData
 import nl.info.zac.policy.input.TaakInput
+import nl.info.zac.policy.input.UserInput
 import nl.info.zac.policy.input.WerklijstInput
 import nl.info.zac.policy.input.ZaakData
 import nl.info.zac.policy.input.ZaakInput
 import nl.info.zac.policy.output.DocumentRechten
 import nl.info.zac.policy.output.NotitieRechten
+import nl.info.zac.policy.output.OverigeRechten
 import nl.info.zac.policy.output.TaakRechten
 import nl.info.zac.policy.output.WerklijstRechten
 import nl.info.zac.policy.output.ZaakRechten
@@ -75,7 +77,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             zaaktype = zaaktypeDescription,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions<nl.info.zac.policy.output.OverigeRechten>()
+        ).evaluate<OverigeRechten>()
 
     fun readZaakRechten(zaak: Zaak, loggedInUser: LoggedInUser): ZaakRechten {
         val zaakType = ztcClientService.readZaaktype(zaak.zaaktype)
@@ -100,7 +102,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUser,
             zaakData = zaakData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readZaakRechtenForZaakZoekObject(zaakZoekObject: ZaakZoekObject): ZaakRechten {
@@ -119,7 +121,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             zaakData = zaakData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readDocumentRechten(enkelvoudigInformatieobject: EnkelvoudigInformatieObject, zaak: Zaak? = null) =
@@ -146,7 +148,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             documentData = documentData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readDocumentRechten(enkelvoudigInformatieobject: DocumentZoekObject): DocumentRechten {
@@ -162,7 +164,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             documentData = documentData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readTaakRechten(taskInfo: TaskInfo): TaakRechten {
@@ -182,7 +184,7 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             taakData = taakData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readTaakRechten(taakZoekObject: TaakZoekObject): TaakRechten {
@@ -193,20 +195,20 @@ class PolicyService @Inject constructor(
             loggedInUser = loggedInUserInstance.get(),
             taakData = taakData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
     }
 
     fun readNotitieRechten(): NotitieRechten =
         NotitieInput(
             loggedInUser = loggedInUserInstance.get(),
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
 
     fun readWerklijstRechten(): WerklijstRechten =
         WerklijstInput(
             loggedInUser = loggedInUserInstance.get(),
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
-        ).searchActions()
+        ).evaluate()
 
     @Deprecated(
         "In PABC-based authorisation, the concept of being authorised for a zaaktype is meaningless, " +
@@ -219,24 +221,26 @@ class PolicyService @Inject constructor(
             loggedInUserInstance.get().isAuthorisedForZaaktype(zaakTypeOmschrijving)
         }
 
-    private inline fun <reified T> nl.info.zac.policy.input.UserInput.searchActions(): T {
-        val response = accessService.searchActions(this.toActionSearchRequest())
-        val inputActions = response.toInputActions()
-        return rechtenFromActions(inputActions)
+    private inline fun <reified T> UserInput.evaluate(): T {
+        val request = this.toEvaluationsRequest()
+        val response = accessService.evaluations(request)
+        val resourceType = this.extractAuthZenResource().type
+        val actions = ResourceActions.BY_RESOURCE_TYPE[resourceType]
+            ?: throw IllegalArgumentException("Unknown resource type: $resourceType")
+        val decisions = response.toDecisions(actions)
+        return rechtenFromEvaluations(decisions)
     }
 
     @Suppress("UNCHECKED_CAST")
-    private inline fun <reified T> rechtenFromActions(
-        actions: List<nl.info.zac.policy.input.Action>
+    private inline fun <reified T> rechtenFromEvaluations(
+        decisions: Map<String, Boolean>
     ): T = when (T::class) {
-        ZaakRechten::class -> ZaakRechten.fromActionSearch(actions)
-        TaakRechten::class -> TaakRechten.fromActionSearch(actions)
-        DocumentRechten::class -> DocumentRechten.fromActionSearch(actions)
-        NotitieRechten::class -> NotitieRechten.fromActionSearch(actions)
-        nl.info.zac.policy.output.OverigeRechten::class -> nl.info.zac.policy.output.OverigeRechten.fromActionSearch(
-            actions
-        )
-        WerklijstRechten::class -> WerklijstRechten.fromActionSearch(actions)
+        ZaakRechten::class -> ZaakRechten.fromEvaluations(decisions)
+        TaakRechten::class -> TaakRechten.fromEvaluations(decisions)
+        DocumentRechten::class -> DocumentRechten.fromEvaluations(decisions)
+        NotitieRechten::class -> NotitieRechten.fromEvaluations(decisions)
+        OverigeRechten::class -> OverigeRechten.fromEvaluations(decisions)
+        WerklijstRechten::class -> WerklijstRechten.fromEvaluations(decisions)
         else -> throw IllegalArgumentException("Unknown rechten type: ${T::class}")
     } as T
 }

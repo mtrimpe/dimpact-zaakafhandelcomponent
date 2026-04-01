@@ -4,11 +4,6 @@
  */
 package nl.info.zac.policy.output
 
-import jakarta.json.bind.annotation.JsonbCreator
-import jakarta.json.bind.annotation.JsonbProperty
-import nl.info.client.opa.model.OpaRuleResult
-import nl.info.zac.policy.input.Action
-
 data class DocumentRechten(
     val lezen: Boolean,
     val wijzigen: Boolean,
@@ -21,27 +16,20 @@ data class DocumentRechten(
     val ontkoppelen: Boolean,
     val downloaden: Boolean,
     val converteren: Boolean
-) : OpaRuleResult {
+) {
     companion object {
-        @JsonbCreator
-        @JvmStatic
-        fun fromActionSearch(
-            @JsonbProperty("results") results: List<Action>
-        ): DocumentRechten {
-            val names = results.map { it.name }.toSet()
-            return DocumentRechten(
-                lezen = "lezen" in names,
-                wijzigen = "wijzigen" in names,
-                verwijderen = "verwijderen" in names,
-                vergrendelen = "vergrendelen" in names,
-                ontgrendelen = "ontgrendelen" in names,
-                ondertekenen = "ondertekenen" in names,
-                toevoegenNieuweVersie = "toevoegen_nieuwe_versie" in names,
-                verplaatsen = "verplaatsen" in names,
-                ontkoppelen = "ontkoppelen" in names,
-                downloaden = "downloaden" in names,
-                converteren = "converteren" in names
-            )
-        }
+        fun fromEvaluations(decisions: Map<String, Boolean>) = DocumentRechten(
+            lezen = decisions["lezen"] ?: false,
+            wijzigen = decisions["wijzigen"] ?: false,
+            verwijderen = decisions["verwijderen"] ?: false,
+            vergrendelen = decisions["vergrendelen"] ?: false,
+            ontgrendelen = decisions["ontgrendelen"] ?: false,
+            ondertekenen = decisions["ondertekenen"] ?: false,
+            toevoegenNieuweVersie = decisions["toevoegen_nieuwe_versie"] ?: false,
+            verplaatsen = decisions["verplaatsen"] ?: false,
+            ontkoppelen = decisions["ontkoppelen"] ?: false,
+            downloaden = decisions["downloaden"] ?: false,
+            converteren = decisions["converteren"] ?: false
+        )
     }
 }

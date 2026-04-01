@@ -1,0 +1,140 @@
+# yaml-language-server: $schema=https://topaz.sh/schema/config.json
+# Topaz configuration for ZAC — per-action evaluation via Rego policies.
+---
+version: 2
+
+logging:
+  prod: true
+  log_level: info
+
+directory:
+  db_path: /db/directory.db
+  request_timeout: 5s
+
+remote_directory:
+  address: "0.0.0.0:9292"
+  insecure: true
+
+auth:
+  options:
+    default:
+      enable_api_key: false
+      enable_anonymous: true
+
+api:
+  health:
+    listen_address: "0.0.0.0:9494"
+
+  services:
+    model:
+      grpc:
+        listen_address: "0.0.0.0:9292"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+      gateway:
+        listen_address: "0.0.0.0:9393"
+        allowed_origins:
+          - https://*
+        certs:
+          tls_key_path: /certs/gateway.key
+          tls_cert_path: /certs/gateway.crt
+          tls_ca_cert_path: /certs/gateway-ca.crt
+        http: true
+        read_timeout: 2s
+        read_header_timeout: 2s
+        write_timeout: 2s
+        idle_timeout: 30s
+
+    reader:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:9292"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+      gateway:
+        listen_address: "0.0.0.0:9393"
+        allowed_origins:
+          - https://*
+        certs:
+          tls_key_path: /certs/gateway.key
+          tls_cert_path: /certs/gateway.crt
+          tls_ca_cert_path: /certs/gateway-ca.crt
+        http: true
+        read_timeout: 2s
+        read_header_timeout: 2s
+        write_timeout: 2s
+        idle_timeout: 30s
+
+    writer:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:9292"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+      gateway:
+        listen_address: "0.0.0.0:9393"
+        allowed_origins:
+          - https://*
+        certs:
+          tls_key_path: /certs/gateway.key
+          tls_cert_path: /certs/gateway.crt
+          tls_ca_cert_path: /certs/gateway-ca.crt
+        http: true
+        read_timeout: 2s
+        read_header_timeout: 2s
+        write_timeout: 2s
+        idle_timeout: 30s
+
+    exporter:
+      grpc:
+        listen_address: "0.0.0.0:9292"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+
+    importer:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:9292"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+
+    authorizer:
+      needs:
+        - reader
+      grpc:
+        connection_timeout_seconds: 2
+        listen_address: "0.0.0.0:8282"
+        certs:
+          tls_key_path: /certs/grpc.key
+          tls_cert_path: /certs/grpc.crt
+          tls_ca_cert_path: /certs/grpc-ca.crt
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - http://*
+        http: true
+        read_timeout: 2s
+        read_header_timeout: 2s
+        write_timeout: 2s
+        idle_timeout: 30s
+
+opa:
+  instance_id: "zac"
+  graceful_shutdown_period_seconds: 2
+  local_bundles:
+    paths:
+      - /policies
+    skip_verification: true

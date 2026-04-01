@@ -11,18 +11,22 @@ import jakarta.inject.Inject
 import nl.info.zac.policy.opa.OpaAccessService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
+import okhttp3.OkHttpClient
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import java.util.Optional
+import java.util.logging.Logger
 
 /**
  * CDI producer that selects the [AccessService] implementation based on configuration.
  *
- * - `opa` (default): uses [OpaAccessService] which routes to OPA Data API
- * - `authzen-http`: loads [com.dataversation.authzen.http.AuthZenHttpAccessService] if on classpath
- * - `authzen-grpc`: loads [com.dataversation.authzen.grpc.AuthZenGrpcAccessService] if on classpath
- *
- * The HTTP and gRPC transports are optional dependencies — they're only loaded
- * if the corresponding Maven artifact is on the classpath AND configured as the backend.
+ * Each backend demonstrates a different integration pattern:
+ * - `opa` (default): CDI/MicroProfile REST client to OPA Data API
+ * - `topaz`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
+ * - `cerbos`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
+ * - `spicedb`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
+ * - `authzforce`: HTTP via [com.dataversation.authzen.http.AuthZenHttpAccessService] + light proxy
+ * - `http`: generic HTTP AuthZEN PDP
+ * - `grpc`: generic gRPC AuthZEN PDP
  */
 @ApplicationScoped
 @AllOpen
@@ -38,10 +42,15 @@ class AccessServiceProducer @Inject constructor(
     @ApplicationScoped
     fun produce(): AccessService = when (backend.lowercase()) {
         "opa" -> opaAccessService
-        "authzen-http" -> createTransport("com.dataversation.authzen.http.AuthZenHttpAccessService")
-        "authzen-grpc" -> createTransport("com.dataversation.authzen.grpc.AuthZenGrpcAccessService")
+        "topaz" -> createTopazTransport()
+        "cerbos" -> createCerbosTransport()
+        "spicedb" -> createSpiceDbTransport()
+        "authzforce" -> createAuthzForceTransport()
+        "http" -> createAuthZenHttpTransport()
+        "grpc" -> createAuthZenGrpcTransport()
         else -> throw IllegalArgumentException(
-            "Unknown authorization backend: '$backend'. Must be 'opa', 'authzen-http', or 'authzen-grpc'."
+            "Unknown authorization backend: '$backend'. " +
+                "Must be 'opa', 'topaz', 'cerbos', 'spicedb', 'authzforce', 'http', or 'grpc'."
         )
     }
 
@@ -49,14 +58,148 @@ class AccessServiceProducer @Inject constructor(
         IllegalStateException("AUTHZEN_PDP_URL must be set when AUTHORIZATION_SERVICE_BACKEND=$backend")
     }
 
-    private fun createTransport(className: String): AccessService = try {
-        val clazz = Class.forName(className)
-        clazz.getConstructor(String::class.java).newInstance(requirePdpUrl()) as AccessService
+    private fun createTopazTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.topaz.TopazAccessService")
+        val url = requirePdpUrl()
+        // ZAC-specific: Rego package prefix and resource type name overrides
+        val policyPackage = "zac"
+        val resourceTypeMap = mapOf(
+            "zaakNotitie" to "notitie",
+            "application" to "overig"
+        )
+        clazz.getConstructor(String::class.java, String::class.java, OkHttpClient::class.java, Map::class.java)
+            .newInstance(url, policyPackage, OkHttpClient(), resourceTypeMap) as AccessService
+    } catch (e: ClassNotFoundException) {
+        throw IllegalStateException("Backend 'topaz' requires authzen-topaz on the classpath.", e)
+    }
+
+    private fun createCerbosTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.cerbos.CerbosAccessService")
+        val url = requirePdpUrl()
+        clazz.getConstructor(String::class.java, OkHttpClient::class.java)
+            .newInstance(url, OkHttpClient()) as AccessService
+    } catch (e: ClassNotFoundException) {
+        throw IllegalStateException("Backend 'cerbos' requires authzen-cerbos on the classpath.", e)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun createSpiceDbTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.spicedb.SpiceDbAccessService")
+        val roleSpecClass = Class.forName("com.dataversation.authzen.spicedb.RoleSpec")
+        val roleSpecCtor = roleSpecClass.getConstructor(String::class.java, String::class.java)
+        fun role(name: String, caveat: String? = null) = roleSpecCtor.newInstance(name, caveat)
+
+        val url = requirePdpUrl()
+        val spicedbToken = System.getenv("SPICEDB_TOKEN") ?: "test"
+        // ZAC-specific: map AuthZEN resource type names to SpiceDB schema type names
+        val resourceTypeMap = mapOf("zaakNotitie" to "zaak_notitie")
+        // ZAC-specific: role-resource relationship assignments for auto-provisioning
+        val roleAssignments = mapOf(
+            "zaak" to mapOf(
+                "raadpleger" to listOf(role("raadpleger")),
+                "behandelaar" to listOf(role("behandelaar")),
+                "coordinator" to listOf(role("coordinator")),
+                "recordmanager" to listOf(role("recordmanager")),
+                "beheerder" to listOf(role("beheerder")),
+                "behandelaar_when_open" to listOf(role("behandelaar", "zaak_is_open")),
+                "behandelaar_can_verlengen" to listOf(role("behandelaar", "zaak_can_verlengen")),
+                "behandelaar_can_opschorten" to listOf(role("behandelaar", "zaak_can_opschorten")),
+                "behandelaar_can_vastleggen_besluit" to listOf(role("behandelaar", "zaak_can_vastleggen_besluit")),
+            ),
+            "taak" to mapOf(
+                "raadpleger" to listOf(role("raadpleger")),
+                "behandelaar" to listOf(role("behandelaar")),
+                "behandelaar_when_open" to listOf(role("behandelaar", "taak_is_open")),
+            ),
+            "document" to mapOf(
+                "raadpleger" to listOf(role("raadpleger")),
+                "behandelaar" to listOf(role("behandelaar")),
+                "recordmanager" to listOf(role("recordmanager")),
+                "behandelaar_zaak_open" to listOf(role("behandelaar", "doc_zaak_open")),
+                "behandelaar_can_edit" to listOf(role("behandelaar", "doc_can_edit")),
+                "behandelaar_can_delete" to listOf(role("behandelaar", "doc_can_delete")),
+                "rm_not_locked" to listOf(role("recordmanager", "doc_rm_can_delete")),
+                "behandelaar_unlock_or_own" to listOf(role("behandelaar", "doc_unlocked_or_own_lock")),
+                "behandelaar_own_lock" to listOf(role("behandelaar", "doc_own_lock")),
+                "behandelaar_definitief" to listOf(role("behandelaar", "doc_is_definitief")),
+            ),
+            "zaak_notitie" to mapOf(
+                "raadpleger" to listOf(role("raadpleger")),
+                "behandelaar" to listOf(role("behandelaar")),
+            ),
+            "application" to mapOf(
+                "behandelaar" to listOf(role("behandelaar")),
+                "beheerder" to listOf(role("beheerder")),
+                "raadpleger" to listOf(role("raadpleger")),
+            ),
+            "werklijst" to mapOf(
+                "raadpleger" to listOf(role("raadpleger")),
+                "coordinator" to listOf(role("coordinator")),
+                "recordmanager" to listOf(role("recordmanager")),
+                "beheerder" to listOf(role("beheerder")),
+            ),
+        )
+        // ZAC-specific: deny all when rollen is empty (PABC zaaktype-level filtering)
+        val preCheck = java.util.function.Predicate<Any> { request ->
+            val rollen = try {
+                val subject = request::class.java.getMethod("getSubject").invoke(request)
+                val props = subject?.let { it::class.java.getMethod("getProperties").invoke(it) } as? Map<*, *>
+                props?.get("rollen")
+            } catch (_: Exception) { null }
+            rollen !is Collection<*> || rollen.isNotEmpty()
+        }
+        clazz.getConstructor(
+            String::class.java, String::class.java, OkHttpClient::class.java,
+            Map::class.java, Map::class.java, java.util.function.Predicate::class.java
+        ).newInstance(
+            url, spicedbToken, OkHttpClient(),
+            resourceTypeMap, roleAssignments, preCheck
+        ) as AccessService
+    } catch (e: ClassNotFoundException) {
+        throw IllegalStateException("Backend 'spicedb' requires authzen-spicedb on the classpath.", e)
+    }
+
+    private fun createAuthzForceTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.authzforce.AuthzForceAccessService")
+        val url = requirePdpUrl()
+        clazz.getConstructor(String::class.java, OkHttpClient::class.java)
+            .newInstance(url, OkHttpClient()) as AccessService
+    } catch (e: ClassNotFoundException) {
+        throw IllegalStateException("Backend 'authzforce' requires authzen-authzforce on the classpath.", e)
+    }
+
+    private fun createAuthZenHttpTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.http.AuthZenHttpAccessService")
+        val url = requirePdpUrl()
+        clazz.getConstructor(String::class.java, OkHttpClient::class.java)
+            .newInstance(url, OkHttpClient()) as AccessService
     } catch (e: ClassNotFoundException) {
         throw IllegalStateException(
-            "Backend '$backend' requires $className on the classpath. " +
-                "Add the corresponding Maven dependency.",
+            "Backend '$backend' requires com.dataversation.authzen.http.AuthZenHttpAccessService " +
+                "on the classpath. Add the corresponding Maven dependency.",
             e
         )
+    }
+
+    private fun createAuthZenGrpcTransport(): AccessService = try {
+        val clazz = Class.forName("com.dataversation.authzen.grpc.AuthZenGrpcAccessService")
+        val url = requirePdpUrl()
+        val useTls = url.startsWith("https://")
+        val target = url.removePrefix("https://").removePrefix("http://")
+        clazz.getConstructor(
+            String::class.java,
+            Boolean::class.javaPrimitiveType,
+            javax.net.ssl.SSLSocketFactory::class.java
+        ).newInstance(target, useTls, null) as AccessService
+    } catch (e: ClassNotFoundException) {
+        throw IllegalStateException(
+            "Backend '$backend' requires com.dataversation.authzen.grpc.AuthZenGrpcAccessService " +
+                "on the classpath. Add the corresponding Maven dependency.",
+            e
+        )
+    }
+
+    companion object {
+        private val LOG = Logger.getLogger(AccessServiceProducer::class.java.name)
     }
 }

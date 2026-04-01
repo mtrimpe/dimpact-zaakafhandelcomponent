@@ -25,7 +25,7 @@ services:
       keycloak-database:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8081:8080"
+      - "8081:8080"
       - "9001:9000"
     healthcheck:
       test: [
@@ -249,7 +249,7 @@ services:
   solr:
     image: solr:9.10.1-slim@sha256:bee615b4c6fb0ffd6f7ab395d9b3f323cfa69327d085c99db6d6c149e4cb2a3b
     ports:
-      - "8983:8983"
+      - "${SOLR_HOST_PORT:-8983}:8983"
     volumes:
       - ./scripts/docker-compose/volume-data/solr-data:/var/solr
     # run as root to change the permissions of the solr folder
@@ -266,6 +266,98 @@ services:
     command: run --server --addr=0.0.0.0:8181 --log-level debug
     ports:
       - "8181:8181"
+
+  # Topaz AuthZEN PDP (per-action evaluation via Rego, with AuthZEN proxy)
+  topaz:
+    image: ghcr.io/aserto-dev/topaz:0.33.12@sha256:9b6988935fa4b0258caeb5bbd9645ae9179bab4736c35073b4ad28f4deac3880
+    entrypoint: ["/bin/sh", "/data/entrypoint.sh"]
+    command: []
+    volumes:
+      - ./topaz/config.yaml:/config/config.yaml:ro
+      - ./topaz/entrypoint.sh:/data/entrypoint.sh:ro
+      - ./topaz/policies:/policies:ro
+    ports:
+      - "8282:8282"
+      - "8383:8383"
+      - "9292:9292"
+      - "9393:9393"
+      - "9494:9494"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8383"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: ["topaz"]
+
+  # Cerbos PDP (ABAC via HTTP)
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:latest
+    volumes:
+      - ./cerbos/.cerbos.yaml:/config/.cerbos.yaml:ro
+      - ./cerbos/policies:/policies:ro
+    command: ["server", "--config=/config/.cerbos.yaml"]
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/config/.cerbos.yaml"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: ["cerbos"]
+
+  # SpiceDB ReBAC PDP
+  spicedb:
+    image: authzed/spicedb:v1.40.0
+    command: serve --grpc-preshared-key=test --http-enabled --http-addr=:8090 --datastore-engine=memory
+    ports:
+      - "50051:50051"
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: ["spicedb"]
+
+  spicedb-init:
+    image: curlimages/curl:latest
+    entrypoint: ["/bin/sh", "/scripts/init.sh"]
+    volumes:
+      - ./spicedb/init.sh:/scripts/init.sh:ro
+      - ./spicedb/schema.zed:/scripts/schema.zed:ro
+    environment:
+      SPICEDB_HTTP_URL: http://spicedb:8090
+      SPICEDB_TOKEN: test
+    depends_on:
+      spicedb:
+        condition: service_healthy
+    profiles: ["spicedb"]
+
+  # AuthzForce XACML 3.0 PDP
+  authzforce:
+    image: authzforce/server:12.0.1
+    ports:
+      - "8087:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/authzforce-ce/domains"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    profiles: ["authzforce"]
+
+  authzforce-init:
+    image: curlimages/curl:latest
+    entrypoint: ["/bin/sh", "/scripts/init.sh"]
+    volumes:
+      - ./authzforce/init.sh:/scripts/init.sh:ro
+      - ./authzforce/zac-policies.xml:/policies/zac-policies.xml:ro
+    environment:
+      AUTHZFORCE_URL: http://authzforce:8080/authzforce-ce
+    depends_on:
+      authzforce:
+        condition: service_healthy
+    profiles: ["authzforce"]
 
   brp-personen-wiremock:
     image: wiremock/wiremock:3.13.2@sha256:fd27e46090916e85326229e5102ee169ae729059f3374549615bd20a35fee1f2
@@ -284,7 +376,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Release
       - ASPNETCORE_URLS=http://+:5010
     ports:
-      - "5010:5010"
+      - "${BRP_HOST_PORT:-5010}:5010"
 
   openklant-database:
     image: postgres:17.9@sha256:b994732fcf33f73776c65d3a5bf1f80c00120ba5007e8ab90307b1a743c1fc16
@@ -792,6 +884,8 @@ services:
       - OFFICE_CONVERTER_CLIENT_MP_REST_URL=http://office-converter:8080
       - OBJECTS_API_CLIENT_MP_REST_URL=http://objecten-api.local:8000
       - OBJECTS_API_TOKEN=fakeZacObjectsToken
+      - AUTHORIZATION_SERVICE_BACKEND=${AUTHORIZATION_SERVICE_BACKEND:-opa}
+      - AUTHZEN_PDP_URL=${AUTHZEN_PDP_URL:-}
       - OPA_API_CLIENT_MP_REST_URL=http://opa:8181
       - OPEN_FORMS_URL=http://localhost:9999 # fake for now
       - OPEN_NOTIFICATIONS_API_SECRET_KEY=openNotificatiesApiSecretKey

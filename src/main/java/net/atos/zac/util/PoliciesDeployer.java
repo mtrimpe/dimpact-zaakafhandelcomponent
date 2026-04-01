@@ -20,11 +20,14 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import nl.info.client.opa.OpaAdminClient;
 
 public class PoliciesDeployer {
+
+    private static final String OPA_BACKEND = "opa";
 
     private static final String POLICIES_FOLDER_NAME = "policies";
 
@@ -38,7 +41,18 @@ public class PoliciesDeployer {
     @RestClient
     private OpaAdminClient opaAdminClient;
 
+    @Inject
+    @ConfigProperty(name = "AUTHORIZATION_SERVICE_BACKEND", defaultValue = OPA_BACKEND)
+    private String authorizationServiceBackend;
+
     public void onStartup(@Observes @Initialized(ApplicationScoped.class) Object event) {
+        if (!OPA_BACKEND.equalsIgnoreCase(authorizationServiceBackend)) {
+            LOG.info(String.format(
+                    "Skipping OPA policy deployment because authorization backend is '%s'",
+                    authorizationServiceBackend
+            ));
+            return;
+        }
         try (final InputStream policiesInputStream = getClass().getClassLoader().getResourceAsStream(format("%s/%s", POLICIES_FOLDER_NAME,
                 POLICIES_FILE_NAME));
              final BufferedReader policiesReader = new BufferedReader(new InputStreamReader(policiesInputStream, StandardCharsets.UTF_8))) {

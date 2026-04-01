@@ -16,6 +16,7 @@ import com.dataversation.authzen.model.ResourceSearchResponse
 import com.dataversation.authzen.model.SubjectSearchRequest
 import com.dataversation.authzen.model.SubjectSearchResponse
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.inject.Typed
 import jakarta.inject.Inject
 import jakarta.json.bind.annotation.JsonbCreator
 import jakarta.json.bind.annotation.JsonbProperty
@@ -33,41 +34,72 @@ import org.eclipse.microprofile.rest.client.inject.RestClient
 /**
  * OPA implementation of [AccessService].
  *
- * Only supports [searchActions] — routes to the appropriate OPA Data API path
- * based on the resource type, sending the AuthZEN subject/resource as OPA input.
- * All other AuthZEN operations throw [UnsupportedOperationException].
+ * Implements [evaluations] by making a single OPA Data API call per resource type
+ * (which returns all allowed actions efficiently), then mapping the results to
+ * per-action boolean decisions matching the requested evaluations.
  */
 @ApplicationScoped
+@Typed(OpaAccessService::class)
 @NoArgConstructor
 @AllOpen
 class OpaAccessService @Inject constructor(
     @RestClient private val opaDataClient: OpaDataClient
 ) : AccessService {
 
-    override fun searchActions(request: ActionSearchRequest): ActionSearchResponse {
-        val resource = requireNotNull(request.resource) { "Resource is required for action search" }
+    /**
+     * Evaluate all actions in a single OPA Data API call.
+     *
+     * **Limitations:** Only varying `action.name` across evaluations is supported.
+     * Per-evaluation subject/resource/context overrides, action properties, shared
+     * top-level action, and top-level context are not supported.
+     */
+    override fun evaluations(request: EvaluationsRequest): EvaluationsResponse {
+        val resource = requireNotNull(request.resource) { "Resource is required" }
         val opaPath = RESOURCE_TYPE_TO_OPA_PATH[resource.type]
             ?: throw IllegalArgumentException("Unknown resource type: ${resource.type}")
+
+        // Single OPA call returns all allowed actions for this subject+resource.
+        // Explicitly convert to maps so JSONB serializes nested AuthZen objects correctly
+        // (the library classes may lack @JsonbProperty annotations needed by the WildFly JSONB provider).
         val opaInput = OpaRuleInput(
             input = mapOf(
-                "subject" to request.subject,
-                "resource" to request.resource
+                "subject" to request.subject?.let {
+                    buildMap<String, Any?> {
+                        put("type", it.type)
+                        put("id", it.id)
+                        it.properties?.let { props -> put("properties", props) }
+                    }
+                },
+                "resource" to request.resource?.let {
+                    buildMap<String, Any?> {
+                        put("type", it.type)
+                        put("id", it.id)
+                        it.properties?.let { props -> put("properties", props) }
+                    }
+                }
             )
         )
-        return opaDataClient.query(opaPath, opaInput).result
+        val opaResponse = opaDataClient.query(opaPath, opaInput)
+        val allowedActions = opaResponse.results.map { it["name"] as String }.toSet()
+
+        return EvaluationsResponse(
+            evaluations = request.evaluations.map { eval ->
+                EvaluationResponse(decision = eval.action?.name in allowedActions)
+            }
+        )
     }
 
     override fun evaluation(request: EvaluationRequest): EvaluationResponse =
-        throw UnsupportedOperationException("OPA backend only supports action search")
+        throw UnsupportedOperationException("Use evaluations() for batch evaluation")
 
-    override fun evaluations(request: EvaluationsRequest): EvaluationsResponse =
-        throw UnsupportedOperationException("OPA backend only supports action search")
+    override fun searchActions(request: ActionSearchRequest): ActionSearchResponse =
+        throw UnsupportedOperationException("Use evaluations() instead")
 
     override fun searchSubjects(request: SubjectSearchRequest): SubjectSearchResponse =
-        throw UnsupportedOperationException("OPA backend only supports action search")
+        throw UnsupportedOperationException("Use evaluations() instead")
 
     override fun searchResources(request: ResourceSearchRequest): ResourceSearchResponse =
-        throw UnsupportedOperationException("OPA backend only supports action search")
+        throw UnsupportedOperationException("Use evaluations() instead")
 
     companion object {
         private val RESOURCE_TYPE_TO_OPA_PATH = mapOf(
@@ -103,9 +135,13 @@ data class OpaRuleInput(
 )
 
 /**
- * OPA Data API response envelope: `{"result": {"results": [...]}}`.
+ * OPA Data API response envelope: `{"result": {"results": [{"name": "action1"}, ...]}}`.
  */
 data class OpaRuleResponse @JsonbCreator constructor(
     @param:JsonbProperty("result")
-    val result: ActionSearchResponse
-)
+    val result: Map<String, Any?>
+) {
+    val results: List<Map<String, Any?>>
+        @Suppress("UNCHECKED_CAST")
+        get() = (result["results"] as? List<Map<String, Any?>>) ?: emptyList()
+}

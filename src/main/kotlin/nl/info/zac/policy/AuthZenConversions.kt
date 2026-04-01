@@ -4,14 +4,14 @@
  */
 package nl.info.zac.policy
 
-import com.dataversation.authzen.model.ActionSearchRequest
-import com.dataversation.authzen.model.ActionSearchResponse
+import com.dataversation.authzen.model.EvaluationRequest
+import com.dataversation.authzen.model.EvaluationsRequest
+import com.dataversation.authzen.model.EvaluationsResponse
 import nl.info.zac.policy.input.UserData
 import nl.info.zac.policy.input.UserInput
+import com.dataversation.authzen.model.Action as AuthZenAction
 import com.dataversation.authzen.model.Resource as AuthZenResource
 import com.dataversation.authzen.model.Subject as AuthZenSubject
-import nl.info.zac.policy.input.Action as InputAction
-import nl.info.zac.policy.input.Resource as InputResource
 
 /**
  * Convert a ZAC [UserData] (AuthZEN subject shape) to an AuthZEN [AuthZenSubject].
@@ -28,13 +28,11 @@ fun UserData.toAuthZenSubject() = AuthZenSubject(
 )
 
 /**
- * Convert a ZAC [InputResource] to an AuthZEN [AuthZenResource].
+ * Convert a ZAC [nl.info.zac.policy.input.Resource] to an AuthZEN [AuthZenResource].
  * Serializes the domain-specific properties to a generic map.
  */
-fun <T> InputResource<T>.toAuthZenResource(): AuthZenResource {
+fun <T> nl.info.zac.policy.input.Resource<T>.toAuthZenResource(): AuthZenResource {
     val propsMap = properties?.let { props ->
-        // Use Jakarta JSON-B to convert the typed properties to a Map
-        // For simplicity, manually build the map based on known types
         when (props) {
             is Map<*, *> ->
                 @Suppress("UNCHECKED_CAST")
@@ -84,15 +82,25 @@ fun UserInput.extractAuthZenResource(): AuthZenResource = when (this) {
 }
 
 /**
- * Build an [ActionSearchRequest] from any ZAC [UserInput] subtype.
+ * Build an [EvaluationsRequest] from any ZAC [UserInput] subtype.
+ * Uses shared subject/resource at the top level, with one [EvaluationRequest] per candidate action.
  */
-fun UserInput.toActionSearchRequest() = ActionSearchRequest(
-    subject = this.subject.toAuthZenSubject(),
-    resource = this.extractAuthZenResource()
-)
+fun UserInput.toEvaluationsRequest(): EvaluationsRequest {
+    val resource = this.extractAuthZenResource()
+    val actions = ResourceActions.BY_RESOURCE_TYPE[resource.type]
+        ?: throw IllegalArgumentException("Unknown resource type: ${resource.type}")
+    return EvaluationsRequest(
+        subject = this.subject.toAuthZenSubject(),
+        resource = resource,
+        evaluations = actions.map { actionName ->
+            EvaluationRequest(action = AuthZenAction(name = actionName))
+        }
+    )
+}
 
 /**
- * Convert AuthZEN [ActionSearchResponse] results to ZAC [InputAction] list for use with *Rechten.fromActionSearch().
+ * Convert an [EvaluationsResponse] to a map of action name → decision boolean.
+ * The response evaluations are zipped with the candidate actions in order.
  */
-fun ActionSearchResponse.toInputActions(): List<InputAction> =
-    results.map { InputAction(it.name) }
+fun EvaluationsResponse.toDecisions(actions: List<String>): Map<String, Boolean> =
+    actions.zip(evaluations) { name, eval -> name to eval.decision }.toMap()

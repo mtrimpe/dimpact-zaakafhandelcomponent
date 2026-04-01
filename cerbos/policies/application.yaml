@@ -1,0 +1,28 @@
+#
+# SPDX-FileCopyrightText: 2025 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  version: "default"
+  importDerivedRoles:
+    - zac_roles
+  resource: "application"
+
+  rules:
+    # starten_zaak
+    - actions: ["starten_zaak"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar"]
+
+    # beheren
+    - actions: ["beheren"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["beheerder"]
+
+    # zoeken
+    - actions: ["zoeken"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["raadpleger"]
