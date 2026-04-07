@@ -5,8 +5,6 @@
 package net.atos.zac.app.ontkoppeldedocumenten;
 
 import static nl.info.client.zgw.util.ZgwUriUtilsKt.extractUuid;
-import static nl.info.zac.policy.PolicyServiceKt.assertPolicy;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -87,7 +85,7 @@ public class OntkoppeldeDocumentenRESTService {
     @PUT
     @Path("")
     public RESTResultaat<RESTOntkoppeldDocument> listDetachedDocuments(final RESTOntkoppeldDocumentListParameters restListParameters) {
-        assertPolicy(policyService.readWerklijstRechten().getInbox());
+        policyService.assertWerklijstActionAllowed("inbox");
         final OntkoppeldDocumentListParameters listParameters = listParametersConverter.convert(restListParameters);
         final OntkoppeldeDocumentenResultaat resultaat = ontkoppeldeDocumentenService.getResultaat(listParameters);
         var ontkoppeldeDocumenten = resultaat.getItems();
@@ -116,7 +114,7 @@ public class OntkoppeldeDocumentenRESTService {
     @DELETE
     @Path("{id}")
     public void deleteDetachedDocument(@PathParam("id") final long id) {
-        assertPolicy(policyService.readWerklijstRechten().getOntkoppeldeDocumentenVerwijderen());
+        policyService.assertWerklijstActionAllowed("ontkoppelde_documenten_verwijderen");
         final Optional<OntkoppeldDocument> ontkoppeldDocument = ontkoppeldeDocumentenService.find(id);
         if (ontkoppeldDocument.isEmpty()) {
             return; // al verwijderd

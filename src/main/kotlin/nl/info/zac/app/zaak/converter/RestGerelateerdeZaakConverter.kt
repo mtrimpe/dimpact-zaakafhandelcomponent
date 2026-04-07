@@ -23,7 +23,7 @@ class RestGerelateerdeZaakConverter @Inject constructor(
 ) {
     fun convert(zaak: Zaak, loggedInUser: LoggedInUser, relatieType: RelatieType?): RestGerelateerdeZaak {
         val zaaktype = ztcClientService.readZaaktype(zaak.zaaktype)
-        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype, loggedInUser)
+        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype)
         return RestGerelateerdeZaak(
             identificatie = zaak.identificatie,
             relatieType = relatieType,

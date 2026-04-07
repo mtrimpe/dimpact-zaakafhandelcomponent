@@ -32,12 +32,14 @@ default wijzigen := false
 wijzigen if {
     behandelaar.rol in user.rollen
     zaaktype_allowed
+    taak.open
 }
 
 default toekennen := false
 toekennen if {
     behandelaar.rol in user.rollen
     zaaktype_allowed
+    taak.open
 }
 
 default creeren_document := false

@@ -29,7 +29,6 @@ import nl.info.zac.app.zaak.model.RestZaakOverzicht
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.signalering.SignaleringService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -122,7 +121,7 @@ class SignaleringRestService @Inject constructor(
     fun listGroupSignaleringInstellingen(
         @PathParam("groupId") groupId: String
     ): List<RestSignaleringInstellingen> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return SignaleringInstellingenZoekParameters(identityService.readGroup(groupId))
             .let(signaleringService::listInstellingenInclusiefMogelijke)
             .let(restSignaleringInstellingenConverter::convert)
@@ -134,7 +133,7 @@ class SignaleringRestService @Inject constructor(
         @PathParam("groupId") groupId: String,
         restInstellingen: RestSignaleringInstellingen
     ): SignaleringInstellingen? {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return identityService.readGroup(groupId)
             .let { restSignaleringInstellingenConverter.convert(restInstellingen, it) }
             .let(signaleringService::createUpdateOrDeleteInstellingen)

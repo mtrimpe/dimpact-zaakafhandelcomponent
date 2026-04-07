@@ -7,13 +7,15 @@ package nl.info.zac.policy.output
 data class OverigeRechten(
     val startenZaak: Boolean,
     val beheren: Boolean,
-    val zoeken: Boolean
+    val zoeken: Boolean,
+    val zaaktypeInzien: Boolean
 ) {
     companion object {
         fun fromEvaluations(decisions: Map<String, Boolean>) = OverigeRechten(
             startenZaak = decisions["starten_zaak"] ?: false,
             beheren = decisions["beheren"] ?: false,
-            zoeken = decisions["zoeken"] ?: false
+            zoeken = decisions["zoeken"] ?: false,
+            zaaktypeInzien = decisions["zaaktype_inzien"] ?: false
         )
     }
 }

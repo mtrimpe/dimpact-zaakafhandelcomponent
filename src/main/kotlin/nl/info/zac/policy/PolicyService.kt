@@ -79,12 +79,12 @@ class PolicyService @Inject constructor(
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
         ).evaluate<OverigeRechten>()
 
-    fun readZaakRechten(zaak: Zaak, loggedInUser: LoggedInUser): ZaakRechten {
+    fun readZaakRechten(zaak: Zaak): ZaakRechten {
         val zaakType = ztcClientService.readZaaktype(zaak.zaaktype)
-        return readZaakRechten(zaak, zaakType, loggedInUser)
+        return readZaakRechten(zaak, zaakType)
     }
 
-    fun readZaakRechten(zaak: Zaak, zaaktype: ZaakType, loggedInUser: LoggedInUser): ZaakRechten {
+    fun readZaakRechten(zaak: Zaak, zaaktype: ZaakType): ZaakRechten {
         val statusType = zaak.status?.let {
             zrcClientService.readStatus(it).statustype
                 .let(ztcClientService::readStatustype)
@@ -99,7 +99,7 @@ class PolicyService @Inject constructor(
             heropend = statusType?.isHeropend()
         )
         return ZaakInput(
-            loggedInUser = loggedInUser,
+            loggedInUser = loggedInUserInstance.get(),
             zaakData = zaakData,
             featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
         ).evaluate()
@@ -220,6 +220,106 @@ class PolicyService @Inject constructor(
         } else {
             loggedInUserInstance.get().isAuthorisedForZaaktype(zaakTypeOmschrijving)
         }
+
+    // ─── Single-action enforcement ───
+
+    fun assertOverigeActionAllowed(actionName: String) = assertOverigeActionAllowed(actionName, null)
+
+    fun assertOverigeActionAllowed(actionName: String, zaaktypeDescription: String?) =
+        assertPolicy(
+            OverigeInput(
+                loggedInUser = loggedInUserInstance.get(),
+                zaaktype = zaaktypeDescription,
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+
+    fun assertZaakActionAllowed(actionName: String, zaak: Zaak, zaakType: ZaakType) {
+        val statusType = zaak.status?.let {
+            zrcClientService.readStatus(it).statustype.let(ztcClientService::readStatustype)
+        }
+        assertPolicy(
+            ZaakInput(
+                loggedInUser = loggedInUserInstance.get(),
+                zaakData = ZaakData(
+                    open = zaak.isOpen(),
+                    zaaktype = zaakType.getOmschrijving(),
+                    opgeschort = zaak.isOpgeschort(),
+                    verlengd = zaak.isVerlengd(),
+                    besloten = zaakType.getBesluittypen()?.isNotEmpty() == true,
+                    intake = statusType?.isIntake(),
+                    heropend = statusType?.isHeropend()
+                ),
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+    }
+
+    fun assertZaakActionAllowed(actionName: String, zaak: Zaak) {
+        val zaakType = ztcClientService.readZaaktype(zaak.zaaktype)
+        assertZaakActionAllowed(actionName, zaak, zaakType)
+    }
+
+    fun assertDocumentActionAllowed(
+        actionName: String,
+        enkelvoudigInformatieobject: EnkelvoudigInformatieObject,
+        zaak: Zaak? = null
+    ) {
+        val lock = lockService.findLock(enkelvoudigInformatieobject.getUrl().extractUuid())
+        assertPolicy(
+            DocumentInput(
+                loggedInUser = loggedInUserInstance.get(),
+                documentData = DocumentData(
+                    definitief = enkelvoudigInformatieobject.getStatus() == StatusEnum.DEFINITIEF,
+                    vergrendeld = enkelvoudigInformatieobject.getLocked(),
+                    vergrendeldDoor = lock?.userId,
+                    ondertekend = enkelvoudigInformatieobject.isSigned(),
+                    zaakOpen = zaak?.isOpen() ?: false,
+                    zaaktype = zaak?.let { ztcClientService.readZaaktype(it.getZaaktype()).getOmschrijving() }
+                ),
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+    }
+
+    fun assertTaakActionAllowed(actionName: String, taskInfo: TaskInfo) {
+        val zaaktypeOmschrijving = TaakVariabelenService.readZaaktypeOmschrijving(taskInfo)
+        assertPolicy(
+            TaakInput(
+                loggedInUser = loggedInUserInstance.get(),
+                taakData = TaakData(
+                    open = TaskUtil.isOpen(taskInfo),
+                    zaaktype = zaaktypeOmschrijving
+                ),
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+    }
+
+    fun assertWerklijstActionAllowed(actionName: String) =
+        assertPolicy(
+            WerklijstInput(
+                loggedInUser = loggedInUserInstance.get(),
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+
+    fun assertNotitieActionAllowed(actionName: String) =
+        assertPolicy(
+            NotitieInput(
+                loggedInUser = loggedInUserInstance.get(),
+                featureFlagPabcIntegration = configurationService.featureFlagPabcIntegration()
+            ).checkAllowed(actionName)
+        )
+
+    /**
+     * Evaluate a single action for this input. Used for server-side enforcement
+     * where only one permission needs to be checked.
+     */
+    private fun UserInput.checkAllowed(actionName: String): Boolean {
+        val request = this.toEvaluationRequest(actionName)
+        return accessService.evaluation(request).decision
+    }
 
     private inline fun <reified T> UserInput.evaluate(): T {
         val request = this.toEvaluationsRequest()

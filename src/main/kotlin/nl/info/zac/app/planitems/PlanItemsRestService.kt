@@ -4,7 +4,6 @@
  */
 package nl.info.zac.app.planitems
 
-import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import jakarta.validation.Valid
@@ -34,7 +33,6 @@ import nl.info.zac.app.planitems.model.RESTPlanItem
 import nl.info.zac.app.planitems.model.RESTProcessTaskData
 import nl.info.zac.app.planitems.model.RESTUserEventListenerData
 import nl.info.zac.app.planitems.model.UserEventListenerActie
-import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.exception.ErrorCode
 import nl.info.zac.exception.InputValidationFailedException
@@ -45,7 +43,6 @@ import nl.info.zac.mailtemplates.MailTemplateService
 import nl.info.zac.mailtemplates.model.Mail
 import nl.info.zac.mailtemplates.model.MailGegevens
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.search.IndexingService
 import nl.info.zac.shared.helper.SuspensionZaakHelper
 import nl.info.zac.util.AllOpen
@@ -79,8 +76,7 @@ class PlanItemsRestService @Inject constructor(
     private val mailTemplateService: MailTemplateService,
     private val policyService: PolicyService,
     private val suspensionZaakHelper: SuspensionZaakHelper,
-    private val restMailGegevensConverter: RESTMailGegevensConverter,
-    private val loggedInUserInstance: Instance<LoggedInUser>
+    private val restMailGegevensConverter: RESTMailGegevensConverter
 ) {
     companion object {
         private const val REDEN_OPSCHORTING = "Aanvullende informatie opgevraagd"
@@ -144,7 +140,7 @@ class PlanItemsRestService @Inject constructor(
         val zaakUUID = zaakVariabelenService.readZaakUUID(planItem)
         val zaak = zrcClientService.readZaak(zaakUUID)
         val taakdata = humanTaskData.taakdata
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).startenTaak)
+        policyService.assertZaakActionAllowed("starten_taak", zaak)
         val zaaktypeCmmnConfiguration = zaaktypeCmmnConfigurationService.readZaaktypeCmmnConfiguration(
             zaak.zaaktype.extractUuid()
         )
@@ -214,10 +210,9 @@ class PlanItemsRestService @Inject constructor(
     @Path("doUserEventListenerPlanItem")
     fun doUserEventListenerPlanItem(userEventListenerData: RESTUserEventListenerData) {
         val zaak = zrcClientService.readZaak(userEventListenerData.zaakUuid)
-        val zaakRechten = policyService.readZaakRechten(zaak, loggedInUserInstance.get())
-        assertPolicy(zaakRechten.startenTaak)
+        policyService.assertZaakActionAllowed("starten_taak", zaak)
         userEventListenerData.restMailGegevens?.run {
-            assertPolicy(zaakRechten.versturenEmail)
+            policyService.assertZaakActionAllowed("versturen_email", zaak)
         }
 
         when (userEventListenerData.actie) {

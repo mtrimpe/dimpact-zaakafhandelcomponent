@@ -154,8 +154,8 @@ class ZaakRestServiceLinkUnlinkTest : BehaviorSpec({
             every {
                 zaakService.readZaakAndZaakTypeByZaakUUID(restZaakLinkData.teKoppelenZaakUuid)
             } returns Pair(teKoppelenZaak, teKoppelenZaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
-            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType, loggedInUser) } returns createZaakRechten()
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
+            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType) } returns createZaakRechten()
             every { zrcClientService.patchZaak(capture(patchZaakUUIDSlot), capture(patchZaakSlot)) } returns zaak
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -203,8 +203,8 @@ class ZaakRestServiceLinkUnlinkTest : BehaviorSpec({
             every {
                 zaakService.readZaakAndZaakTypeByZaakUUID(restZaakLinkData.teKoppelenZaakUuid)
             } returns Pair(teKoppelenZaak, teKoppelenZaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
-            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType, loggedInUser) } returns createZaakRechten()
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
+            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType) } returns createZaakRechten()
             every { zrcClientService.patchZaak(capture(patchZaakUUIDSlot), capture(patchZaakSlot)) } returns zaak
             every { indexingService.addOrUpdateZaak(teKoppelenZaak.uuid, false) } just runs
             every { eventingService.send(any<ScreenEvent>()) } just runs
@@ -241,8 +241,8 @@ class ZaakRestServiceLinkUnlinkTest : BehaviorSpec({
             every {
                 zaakService.readZaakAndZaakTypeByZaakUUID(restZaakLinkData.teKoppelenZaakUuid)
             } returns Pair(teKoppelenZaak, teKoppelenZaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
-            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType, loggedInUser) } returns createZaakRechten()
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
+            every { policyService.readZaakRechten(teKoppelenZaak, teKoppelenZaakType) } returns createZaakRechten()
             every { loggedInUserInstance.get() } returns loggedInUser
 
             val patchZaakUUIDSlot = slot<UUID>()
@@ -289,8 +289,8 @@ class ZaakRestServiceLinkUnlinkTest : BehaviorSpec({
             every {
                 zaakService.readZaakAndZaakTypeByZaakID(restZaakUnlinkData.gekoppeldeZaakIdentificatie)
             } returns Pair(gekoppeldeZaak, gekoppeldeZaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
-            every { policyService.readZaakRechten(gekoppeldeZaak, gekoppeldeZaakType, loggedInUser) } returns createZaakRechten()
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
+            every { policyService.readZaakRechten(gekoppeldeZaak, gekoppeldeZaakType) } returns createZaakRechten()
             every {
                 zrcClientService.patchZaak(capture(patchZaakUUIDSlot), capture(patchZaakSlot), "fakeUnlinkReason")
             } returns zaak

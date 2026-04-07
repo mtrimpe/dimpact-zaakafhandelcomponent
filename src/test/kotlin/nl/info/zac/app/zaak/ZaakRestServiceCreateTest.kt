@@ -263,7 +263,7 @@ class ZaakRestServiceCreateTest : BehaviorSpec({
                 policyService.readOverigeRechten(zaakType.omschrijving)
             } returns createOverigeRechtenAllDeny(startenZaak = true)
             every {
-                policyService.readZaakRechten(zaak, zaakType, loggedInUser)
+                policyService.readZaakRechten(zaak, zaakType)
             } returns createZaakRechtenAllDeny(toevoegenInitiatorPersoon = true)
             every { policyService.isAuthorisedForZaaktype(zaakType.omschrijving) } returns true
             every {
@@ -411,7 +411,7 @@ class ZaakRestServiceCreateTest : BehaviorSpec({
                 policyService.readOverigeRechten(zaakType.omschrijving)
             } returns createOverigeRechtenAllDeny(startenZaak = true)
             every {
-                policyService.readZaakRechten(zaak, zaakType, loggedInUser)
+                policyService.readZaakRechten(zaak, zaakType)
             } returns createZaakRechtenAllDeny(toevoegenInitiatorPersoon = true)
             every { policyService.isAuthorisedForZaaktype(zaakType.omschrijving) } returns true
             every {

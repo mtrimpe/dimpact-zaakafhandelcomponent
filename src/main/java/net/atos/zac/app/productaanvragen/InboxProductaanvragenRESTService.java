@@ -5,8 +5,6 @@
 
 package net.atos.zac.app.productaanvragen;
 
-import static nl.info.zac.policy.PolicyServiceKt.assertPolicy;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
@@ -63,7 +61,7 @@ public class InboxProductaanvragenRESTService {
     public RESTResultaat<RESTInboxProductaanvraag> listInboxProductaanvragen(
             final RESTInboxProductaanvraagListParameters restListParameters
     ) {
-        assertPolicy(policyService.readWerklijstRechten().getInbox());
+        policyService.assertWerklijstActionAllowed("inbox");
         final InboxProductaanvraagListParameters listParameters = listParametersConverter.convert(restListParameters);
         final InboxProductaanvraagResultaat resultaat = inboxProductaanvraagService.list(listParameters);
         final RESTInboxProductaanvraagResultaat restInboxProductaanvraagResultaat = new RESTInboxProductaanvraagResultaat(
@@ -82,7 +80,7 @@ public class InboxProductaanvragenRESTService {
     @GET
     @Path("/{uuid}/pdfPreview")
     public Response pdfPreview(@PathParam("uuid") final UUID uuid) {
-        assertPolicy(policyService.readWerklijstRechten().getInbox());
+        policyService.assertWerklijstActionAllowed("inbox");
         EnkelvoudigInformatieObject enkelvoudigInformatieobject = drcClientService.readEnkelvoudigInformatieobject(uuid);
         try (ByteArrayInputStream is = drcClientService.downloadEnkelvoudigInformatieobject(uuid)) {
             return Response.ok(is)
@@ -97,7 +95,7 @@ public class InboxProductaanvragenRESTService {
     @DELETE
     @Path("{id}")
     public void deleteInboxProductaanvraag(@PathParam("id") final long id) {
-        assertPolicy(policyService.readWerklijstRechten().getInboxProductaanvragenVerwijderen());
+        policyService.assertWerklijstActionAllowed("inbox_productaanvragen_verwijderen");
         inboxProductaanvraagService.delete(id);
     }
 }

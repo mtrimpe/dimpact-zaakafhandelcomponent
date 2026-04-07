@@ -463,7 +463,7 @@ class TaskRestServiceTest : BehaviorSpec({
             )
             val loggedInUser = createLoggedInUser()
             every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-            every { policyService.readZaakRechten(zaak, loggedInUser).lezen } returns true
+            every { policyService.readZaakRechten(zaak).lezen } returns true
             every { taskService.listTasksForZaak(zaak.uuid) } returns tasks
             every { restTaskConverter.convert(tasks) } returns restTasks
             every { loggedInUserInstance.get() } returns loggedInUser

@@ -6,8 +6,6 @@
 package net.atos.zac.app.admin;
 
 
-import static nl.info.zac.policy.PolicyServiceKt.assertPolicy;
-
 import java.util.List;
 
 import jakarta.inject.Inject;
@@ -57,20 +55,20 @@ public class MailtemplateKoppelingRESTService {
     @GET
     @Path("{id}")
     public RESTMailtemplateKoppeling readMailtemplateKoppeling(@PathParam("id") final long id) {
-        assertPolicy(policyService.readOverigeRechten(null).getBeheren());
+        policyService.assertOverigeActionAllowed("beheren");
         return RESTMailtemplateKoppelingConverter.convert(mailTemplateKoppelingenService.readMailtemplateKoppeling(id));
     }
 
     @DELETE
     @Path("{id}")
     public void deleteMailtemplateKoppeling(@PathParam("id") final long id) {
-        assertPolicy(policyService.readOverigeRechten(null).getBeheren());
+        policyService.assertOverigeActionAllowed("beheren");
         mailTemplateKoppelingenService.delete(id);
     }
 
     @GET
     public List<RESTMailtemplateKoppeling> listMailtemplateKoppelingen() {
-        assertPolicy(policyService.readOverigeRechten(null).getBeheren());
+        policyService.assertOverigeActionAllowed("beheren");
         final List<ZaaktypeCmmnMailtemplateParameters> zaaktypeCmmnMailtemplateParametersList = mailTemplateKoppelingenService
                 .listMailtemplateKoppelingen();
         return zaaktypeCmmnMailtemplateParametersList.stream().map(zaaktypeCmmnMailtemplateParameters -> {
@@ -87,7 +85,7 @@ public class MailtemplateKoppelingRESTService {
     public RESTMailtemplateKoppeling storeMailtemplateKoppeling(
             final RESTMailtemplateKoppeling mailtemplateKoppeling
     ) {
-        assertPolicy(policyService.readOverigeRechten(null).getBeheren());
+        policyService.assertOverigeActionAllowed("beheren");
         return RESTMailtemplateKoppelingConverter.convert(
                 mailTemplateKoppelingenService.storeMailtemplateKoppeling(
                         RESTMailtemplateKoppelingConverter.convert(mailtemplateKoppeling)

@@ -65,7 +65,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
         verify(exactly = 1) {
             zrcClientService.readZaak(sourceZaak.uuid)
             searchService.zoek(any())
-            policyService.readZaakRechten(sourceZaak, loggedInUser)
+            policyService.readZaakRechten(sourceZaak)
             policyService.readZaakRechtenForZaakZoekObject(targetZaak)
         }
     }
@@ -96,7 +96,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(sourceZaak.uuid) } returns sourceZaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(sourceZaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(sourceZaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -204,7 +204,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(sourceZaak.uuid) } returns sourceZaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(sourceZaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(sourceZaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -298,7 +298,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(sourceZaak.uuid) } returns sourceZaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(sourceZaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(sourceZaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -394,7 +394,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(hoofdzaak.uuid) } returns hoofdzaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(hoofdzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(hoofdzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -490,7 +490,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(hoofdzaak.uuid) } returns hoofdzaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(hoofdzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(hoofdzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -585,7 +585,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(hoofdzaak.uuid) } returns hoofdzaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(hoofdzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(hoofdzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -688,7 +688,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(deelzaak.uuid) } returns deelzaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(deelzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(deelzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -784,7 +784,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(deelzaak.uuid) } returns deelzaak
             every { searchService.zoek(any()) } returns zoekResultaat
-            every { policyService.readZaakRechten(deelzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(deelzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 
@@ -882,7 +882,7 @@ class ZaakKoppelenRestServiceTest : BehaviorSpec() {
 
             every { zrcClientService.readZaak(deelzaak.uuid) } returns deelzaak
             every { searchService.zoek(capture(zoekParametersSlot)) } returns zoekResultaat
-            every { policyService.readZaakRechten(deelzaak, loggedInUser).koppelen } returns true
+            every { policyService.readZaakRechten(deelzaak).koppelen } returns true
             every { policyService.readZaakRechtenForZaakZoekObject(zaakZoekObject).koppelen } returns true
             every { loggedInUserInstance.get() } returns loggedInUser
 

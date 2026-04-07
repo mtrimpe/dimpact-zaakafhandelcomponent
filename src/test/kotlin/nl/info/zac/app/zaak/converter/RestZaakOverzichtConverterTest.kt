@@ -51,7 +51,7 @@ class RestZaakOverzichtConverterTest : BehaviorSpec({
         val loggedInUser = createLoggedInUser()
 
         every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
-        every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
+        every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
 
         When("converted to dashboard version of RestZaakOverzicht") {
             val result = restZaakOverzichtConverter.convertForDisplay(zaak, loggedInUser)

@@ -8,7 +8,6 @@ import static nl.info.zac.policy.PolicyServiceKt.assertPolicy;
 
 import java.util.UUID;
 
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.Consumes;
@@ -23,7 +22,6 @@ import net.atos.zac.app.mail.model.RESTMailGegevens;
 import net.atos.zac.flowable.ZaakVariabelenService;
 import nl.info.client.zgw.zrc.ZrcClientService;
 import nl.info.client.zgw.zrc.model.generated.Zaak;
-import nl.info.zac.authentication.LoggedInUser;
 import nl.info.zac.mail.MailService;
 import nl.info.zac.mail.model.BronnenKt;
 import nl.info.zac.policy.PolicyService;
@@ -40,7 +38,6 @@ public class MailRestService {
     private PolicyService policyService;
     private ZrcClientService zrcClientService;
     private RESTMailGegevensConverter restMailGegevensConverter;
-    private Instance<LoggedInUser> loggedInUserInstance;
 
     /**
      * No-arg constructor for CDI.
@@ -55,8 +52,7 @@ public class MailRestService {
             final ZaakVariabelenService zaakVariabelenService,
             final PolicyService policyService,
             final ZrcClientService zrcClientService,
-            final RESTMailGegevensConverter restMailGegevensConverter,
-            final Instance<LoggedInUser> loggedInUserInstance
+            final RESTMailGegevensConverter restMailGegevensConverter
     ) {
         this.zaakService = zaakService;
         this.mailService = mailService;
@@ -64,7 +60,6 @@ public class MailRestService {
         this.policyService = policyService;
         this.zrcClientService = zrcClientService;
         this.restMailGegevensConverter = restMailGegevensConverter;
-        this.loggedInUserInstance = loggedInUserInstance;
     }
 
     @POST
@@ -73,9 +68,8 @@ public class MailRestService {
             @PathParam("zaakUuid") final UUID zaakUUID,
             final RESTMailGegevens restMailGegevens
     ) {
-        final LoggedInUser loggedInUser = loggedInUserInstance.get();
         final Zaak zaak = zrcClientService.readZaak(zaakUUID);
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUser).getVersturenEmail());
+        policyService.assertZaakActionAllowed("versturen_email", zaak);
         mailService.sendMail(restMailGegevensConverter.convert(restMailGegevens), BronnenKt.getBronnenFromZaak(zaak));
     }
 
@@ -85,11 +79,10 @@ public class MailRestService {
             @PathParam("zaakUuid") final UUID zaakUuid,
             final RESTMailGegevens restMailGegevens
     ) {
-        final LoggedInUser loggedInUser = loggedInUserInstance.get();
         final Zaak zaak = zrcClientService.readZaak(zaakUuid);
         var ontvangstbevestigingVerstuurd = Boolean.TRUE.equals(zaakVariabelenService.findOntvangstbevestigingVerstuurd(zaak.getUuid()));
-        assertPolicy(!ontvangstbevestigingVerstuurd && policyService.readZaakRechten(zaak, loggedInUser)
-                .getVersturenOntvangstbevestiging());
+        assertPolicy(!ontvangstbevestigingVerstuurd);
+        policyService.assertZaakActionAllowed("versturen_ontvangstbevestiging", zaak);
         mailService.sendMail(restMailGegevensConverter.convert(restMailGegevens), BronnenKt.getBronnenFromZaak(zaak));
         zaakService.setOntvangstbevestigingVerstuurdIfNotHeropend(zaak);
     }

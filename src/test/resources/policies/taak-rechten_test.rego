@@ -52,11 +52,21 @@ test_lezen_missing_role_fails if {
 # wijzigen
 ##########
 test_wijzigen if {
-    wijzigen with input.subject.properties.rollen as [ "behandelaar" ]
+    wijzigen
+        with input.subject.properties.rollen as [ "behandelaar" ]
+        with input.resource.properties.open as true
+}
+
+test_wijzigen_taak_closed_fails if {
+    not wijzigen
+        with input.subject.properties.rollen as [ "behandelaar" ]
+        with input.resource.properties.open as false
 }
 
 test_wijzigen_wrong_role_fails if {
-    not wijzigen with input.subject.properties.rollen as [ "fakeRole" ]
+    not wijzigen
+        with input.subject.properties.rollen as [ "fakeRole" ]
+        with input.resource.properties.open as true
 }
 
 test_wijzigen_missing_role_fails if {
@@ -67,11 +77,21 @@ test_wijzigen_missing_role_fails if {
 # toekennen
 ###########
 test_toekennen if {
-    toekennen with input.subject.properties.rollen as [ "behandelaar" ]
+    toekennen
+        with input.subject.properties.rollen as [ "behandelaar" ]
+        with input.resource.properties.open as true
+}
+
+test_toekennen_taak_closed_fails if {
+    not toekennen
+        with input.subject.properties.rollen as [ "behandelaar" ]
+        with input.resource.properties.open as false
 }
 
 test_toekennen_wrong_role_fails if {
-    not toekennen with input.subject.properties.rollen as [ "fakeRole" ]
+    not toekennen
+        with input.subject.properties.rollen as [ "fakeRole" ]
+        with input.resource.properties.open as true
 }
 
 test_toekennen_missing_role_fails if {

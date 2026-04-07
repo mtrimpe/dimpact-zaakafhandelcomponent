@@ -36,7 +36,6 @@ import nl.info.zac.configuration.ConfigurationService.Companion.COMMUNICATIEKANA
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_REFERENCE_TABLE_SYSTEM_VALUES_CANNOT_BE_CHANGED
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 
@@ -54,14 +53,14 @@ class ReferenceTableRestService @Inject constructor(
 ) {
     @GET
     fun listReferenceTables(): List<RestReferenceTable> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableService.listReferenceTables()
             .map { it.toRestReferenceTable(false) }
     }
 
     @POST
     fun createReferenceTable(restReferenceTable: RestReferenceTable): RestReferenceTable {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableAdminService.createReferenceTable(
             restReferenceTable.toReferenceTable()
         ).toRestReferenceTable(
@@ -72,7 +71,7 @@ class ReferenceTableRestService @Inject constructor(
     @GET
     @Path("{id}")
     fun readReferenceTableById(@PathParam("id") id: Long): RestReferenceTable {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableService.readReferenceTable(id).toRestReferenceTable(
             true
         )
@@ -93,7 +92,7 @@ class ReferenceTableRestService @Inject constructor(
         @PathParam("id") id: Long,
         @Valid restReferenceTableUpdate: RestReferenceTableUpdate
     ): RestReferenceTable {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableService.readReferenceTable(id).let { existingReferenceTable ->
             val systemValueNames = existingReferenceTable.values.filter { it.isSystemValue }.map { it.name }
             existingReferenceTable.updateExistingReferenceTable(
@@ -113,14 +112,14 @@ class ReferenceTableRestService @Inject constructor(
     @DELETE
     @Path("{id}")
     fun deleteReferenceTable(@PathParam("id") id: Long) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         referenceTableAdminService.deleteReferenceTable(id)
     }
 
     @GET
     @Path("afzender")
     fun listEmailSenders(): List<String> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableService.readReferenceTable(AFZENDER.name).values.let {
             getReferenceTableValueNames(it)
         }
@@ -137,7 +136,7 @@ class ReferenceTableRestService @Inject constructor(
     @GET
     @Path("domein")
     fun listDomains(): List<String> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return referenceTableService.readReferenceTable(DOMEIN.name).values.let {
             getReferenceTableValueNames(it)
         }

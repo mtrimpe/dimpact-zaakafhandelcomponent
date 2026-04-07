@@ -163,7 +163,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
                 zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid)
             } returns Pair(zaak, zaakType)
             every { zgwApiService.findInitiatorRoleForZaak(zaak) } returns rolMedewerker
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns zaakRechten
+            every { policyService.readZaakRechten(zaak, zaakType) } returns zaakRechten
             every { zrcClientService.deleteRol(any(), any()) } just runs
             every { restZaakConverter.toRestZaak(zaak, zaakType, zaakRechten, loggedInUser) } returns restZaak
             every { loggedInUserInstance.get() } returns loggedInUser
@@ -190,7 +190,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
             val loggedInUser = createLoggedInUser()
 
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten(afbreken = true)
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten(afbreken = true)
             every {
                 zaaktypeConfigurationService.readZaaktypeConfiguration(zaakTypeUUID)
             } returns zaaktypeConfiguration
@@ -231,7 +231,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
             val loggedInUser = createLoggedInUser()
 
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaakUuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten(afbreken = true)
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten(afbreken = true)
             every { loggedInUserInstance.get() } returns loggedInUser
 
             shouldThrow<ZaakWithADecisionCannotBeTerminatedException> {
@@ -268,7 +268,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
             val loggedInUser = createLoggedInUser()
 
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten(afbreken = true)
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten(afbreken = true)
             every {
                 zaaktypeConfigurationService.readZaaktypeConfiguration(zaakTypeUUID)
             } returns zaaktypeCmmnConfiguration
@@ -310,7 +310,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
             val loggedInUser = createLoggedInUser()
 
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten(afbreken = true)
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten(afbreken = true)
             every {
                 zaaktypeConfigurationService.readZaaktypeConfiguration(zaakTypeUUID)
             } returns zaaktypeConfiguration
@@ -404,7 +404,7 @@ class ZaakRestServiceDeleteTerminateCloseTest : BehaviorSpec({
             val loggedInUser = createLoggedInUser()
 
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten(behandelen = true)
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten(behandelen = true)
             every { zgwApiService.closeZaak(zaak, resultaattypeUuid, reden) } just runs
             every { loggedInUserInstance.get() } returns loggedInUser
 

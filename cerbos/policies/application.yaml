@@ -26,3 +26,8 @@ resourcePolicy:
     - actions: ["zoeken"]
       effect: EFFECT_ALLOW
       derivedRoles: ["raadpleger"]
+
+    # zaaktype_inzien
+    - actions: ["zaaktype_inzien"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["behandelaar", "beheerder"]

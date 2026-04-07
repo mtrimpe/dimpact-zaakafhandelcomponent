@@ -18,7 +18,6 @@ import nl.info.zac.mailtemplates.MailTemplateService
 import nl.info.zac.mailtemplates.model.Mail
 import nl.info.zac.mailtemplates.model.MailTemplateVariables
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 
@@ -36,13 +35,13 @@ class MailtemplateBeheerRestService @Inject constructor(
     @GET
     @Path("{id}")
     fun readMailtemplate(@PathParam("id") @Positive id: Long): RESTMailtemplate {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return RESTMailtemplateConverter.convert(mailTemplateService.readMailtemplate(id))
     }
 
     @GET
     fun listMailtemplates(): List<RESTMailtemplate> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val mailTemplates = mailTemplateService.listMailtemplates()
         return mailTemplates.map { RESTMailtemplateConverter.convert(it) }
     }
@@ -50,7 +49,7 @@ class MailtemplateBeheerRestService @Inject constructor(
     @GET
     @Path("/koppelbaar")
     fun listkoppelbareMailtemplates(): List<RESTMailtemplate> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val mailTemplates = mailTemplateService.listKoppelbareMailtemplates()
         return mailTemplates.map { RESTMailtemplateConverter.convert(it) }
     }
@@ -58,14 +57,14 @@ class MailtemplateBeheerRestService @Inject constructor(
     @DELETE
     @Path("{id}")
     fun deleteMailtemplate(@PathParam("id") @Positive id: Long) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         mailTemplateService.delete(id)
     }
 
     @POST
     @Path("")
     fun createMailtemplate(@Valid mailtemplate: RESTMailtemplate): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         if (mailtemplate.id != null) {
             mailtemplate.id = null // Ignore provided ID
         }
@@ -82,7 +81,7 @@ class MailtemplateBeheerRestService @Inject constructor(
         @PathParam("id") @Positive id: Long,
         @Valid mailtemplate: RESTMailtemplate
     ): RESTMailtemplate {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val updatedTemplate = mailTemplateService.updateMailtemplate(
             id, RESTMailtemplateConverter.convertForUpdate(mailtemplate)
         )

@@ -25,7 +25,6 @@ import nl.info.zac.app.search.model.RestZoekParameters
 import nl.info.zac.app.search.model.RestZoekResultaat
 import nl.info.zac.app.search.model.toZoekParameters
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.search.SearchService
 import nl.info.zac.search.model.ZoekResultaat
 import nl.info.zac.search.model.zoekobject.ZaakZoekObject
@@ -56,8 +55,8 @@ class SearchRestService @Inject constructor(
     ): RestZoekResultaat<out AbstractRestZoekObject> {
         when (restZoekParameters.type) {
             ZoekObjectType.ZAAK, ZoekObjectType.TAAK ->
-                assertPolicy(policyService.readWerklijstRechten().zakenTaken)
-            else -> assertPolicy(policyService.readOverigeRechten().zoeken)
+                policyService.assertWerklijstActionAllowed("zaken_taken")
+            else -> policyService.assertOverigeActionAllowed("zoeken")
         }
         val zoekParameters = restZoekZaakParametersConverter.convert(restZoekParameters)
         val zoekResultaat = searchService.zoek(zoekParameters)
@@ -67,7 +66,7 @@ class SearchRestService @Inject constructor(
     @PUT
     @Path("zaken")
     fun listZakenForInformationObjectType(@Valid restZoekKoppelenParameters: RestZoekKoppelenParameters) =
-        assertPolicy(policyService.readWerklijstRechten().zakenTaken).run {
+        policyService.assertWerklijstActionAllowed("zaken_taken").run {
             searchService.zoek(restZoekKoppelenParameters.toZoekParameters()).let {
                 restZoekResultaatConverter.convert(it, buildDocumentsLinkableList(it, restZoekKoppelenParameters))
             }

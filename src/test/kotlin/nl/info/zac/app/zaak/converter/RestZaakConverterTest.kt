@@ -82,7 +82,9 @@ class RestZaakConverterTest : BehaviorSpec({
         restZaaktypeConverter = restZaaktypeConverter,
         zaakVariabelenService = zaakVariabelenService,
         bpmnService = bpmnService,
-        identificationService = identificationService
+        identificationService = identificationService,
+        policyService = mockk(),
+        loggedInUserInstance = mockk()
     )
 
     beforeEach {

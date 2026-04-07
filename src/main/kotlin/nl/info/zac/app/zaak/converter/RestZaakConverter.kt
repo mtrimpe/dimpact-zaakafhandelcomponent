@@ -31,9 +31,11 @@ import nl.info.zac.app.zaak.model.RestGerelateerdeZaak
 import nl.info.zac.app.zaak.model.RestZaak
 import nl.info.zac.app.zaak.model.toRestGeometry
 import nl.info.zac.app.zaak.model.toRestZaakStatus
+import jakarta.enterprise.inject.Instance
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.flowable.bpmn.BpmnService
 import nl.info.zac.identification.IdentificationService
+import nl.info.zac.policy.PolicyService
 import nl.info.zac.policy.output.ZaakRechten
 import nl.info.zac.search.model.ZaakIndicatie
 import nl.info.zac.search.model.ZaakIndicatie.DEELZAAK
@@ -60,7 +62,17 @@ class RestZaakConverter @Inject constructor(
     private val zaakVariabelenService: ZaakVariabelenService,
     private val bpmnService: BpmnService,
     private val identificationService: IdentificationService,
+    private val policyService: PolicyService,
+    private val loggedInUserInstance: Instance<LoggedInUser>,
 ) {
+    fun toRestZaak(
+        zaak: Zaak,
+        zaakType: ZaakType
+    ): RestZaak {
+        val loggedInUser = loggedInUserInstance.get()
+        return toRestZaak(zaak, zaakType, policyService.readZaakRechten(zaak, zaakType), loggedInUser)
+    }
+
     fun toRestZaak(
         zaak: Zaak,
         zaakType: ZaakType,

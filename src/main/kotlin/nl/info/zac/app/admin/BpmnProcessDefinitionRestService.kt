@@ -27,7 +27,6 @@ import nl.info.zac.flowable.bpmn.BpmnProcessDefinitionTaskFormService
 import nl.info.zac.flowable.bpmn.BpmnService
 import nl.info.zac.flowable.bpmn.model.BpmnProcessDefinitionTaskForm
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.NoArgConstructor
 
 @Singleton
@@ -44,7 +43,7 @@ class BpmnProcessDefinitionRestService @Inject constructor(
     fun listProcessDefinitions(
         @QueryParam("details") @DefaultValue("false") details: Boolean
     ): List<RestBpmnProcessDefinition> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         if (details) {
             return listProcessDefinitionsWithDetails()
         }
@@ -132,7 +131,7 @@ class BpmnProcessDefinitionRestService @Inject constructor(
 
     @POST
     fun createProcessDefinition(processDefinitionContent: RestProcessDefinitionContent): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         bpmnService.addProcessDefinition(processDefinitionContent.filename, processDefinitionContent.content)
         return Response.created(null).build()
     }
@@ -140,7 +139,7 @@ class BpmnProcessDefinitionRestService @Inject constructor(
     @DELETE
     @Path("{key}")
     fun deleteProcessDefinition(@PathParam("key") key: String): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         if (bpmnService.isProcessDefinitionInUse(key)) {
             return Response.status(Status.BAD_REQUEST)
                 .entity(mapOf("message" to "BPMN process definition '$key' cannot be deleted as it is in use"))
@@ -156,7 +155,7 @@ class BpmnProcessDefinitionRestService @Inject constructor(
         @PathParam("key") key: String,
         bpmnProcessDefinitionTaskFormContent: BpmnProcessDefinitionTaskFormContent
     ): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         bpmnProcessDefinitionTaskFormService.addForm(
             key,
             bpmnProcessDefinitionTaskFormContent.filename,
@@ -171,7 +170,7 @@ class BpmnProcessDefinitionRestService @Inject constructor(
         @PathParam("key") key: String,
         @PathParam("name") name: String
     ): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         if (bpmnService.isProcessDefinitionInUse(key) &&
             !isFormOrphaned(key, name)
         ) {

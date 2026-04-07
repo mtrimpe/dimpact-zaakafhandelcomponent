@@ -78,8 +78,6 @@ fun createZaakRechten(
     toevoegenInitiatorPersoon: Boolean = true,
     toevoegenInitiatorBedrijf: Boolean = true,
     verwijderenInitiator: Boolean = true,
-    toevoegenBetrokkenePersoon: Boolean = true,
-    toevoegenBetrokkeneBedrijf: Boolean = true,
     verwijderenBetrokkene: Boolean = true,
     toevoegenBagObject: Boolean = true,
     startenTaak: Boolean = true,
@@ -90,7 +88,7 @@ fun createZaakRechten(
     lezen, wijzigen, toekennen, behandelen, afbreken, heropenen, bekijkenZaakdata, wijzigenDoorlooptijd,
     verlengen, opschorten, hervatten, creerenDocument, toevoegenDocument, koppelen, versturenEmail,
     versturenOntvangstbevestiging, toevoegenInitiatorPersoon, toevoegenInitiatorBedrijf, verwijderenInitiator,
-    toevoegenBetrokkenePersoon, toevoegenBetrokkeneBedrijf, verwijderenBetrokkene, toevoegenBagObject, startenTaak,
+    verwijderenBetrokkene, toevoegenBagObject, startenTaak,
     vastleggenBesluit, verlengenDoorlooptijd, wijzigenLocatie
 )
 
@@ -115,8 +113,6 @@ fun createZaakRechtenAllDeny(
     toevoegenInitiatorPersoon: Boolean = false,
     toevoegenInitiatorBedrijf: Boolean = false,
     verwijderenInitiator: Boolean = false,
-    toevoegenBetrokkenePersoon: Boolean = false,
-    toevoegenBetrokkeneBedrijf: Boolean = false,
     verwijderenBetrokkene: Boolean = false,
     toevoegenBagObject: Boolean = false,
     startenTaak: Boolean = false,
@@ -142,8 +138,6 @@ fun createZaakRechtenAllDeny(
     toevoegenInitiatorPersoon,
     toevoegenInitiatorBedrijf,
     verwijderenInitiator,
-    toevoegenBetrokkenePersoon,
-    toevoegenBetrokkeneBedrijf,
     verwijderenBetrokkene,
     toevoegenBagObject,
     startenTaak,
@@ -185,11 +179,13 @@ fun createWerklijstRechtenAllDeny(
 fun createOverigeRechten(
     startenZaak: Boolean = true,
     beheren: Boolean = true,
-    zoeken: Boolean = true
+    zoeken: Boolean = true,
+    zaaktypeInzien: Boolean = true
 ) = OverigeRechten(
     startenZaak,
     beheren,
-    zoeken
+    zoeken,
+    zaaktypeInzien
 )
 
 fun createNotitieRechten(

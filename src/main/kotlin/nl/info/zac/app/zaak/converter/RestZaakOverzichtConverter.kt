@@ -31,7 +31,7 @@ class RestZaakOverzichtConverter @Inject constructor(
 ) {
     fun convert(zaak: Zaak, loggedInUser: LoggedInUser): RestZaakOverzicht {
         val zaaktype = ztcClientService.readZaaktype(zaak.zaaktype)
-        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype, loggedInUser)
+        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype)
         return RestZaakOverzicht(
             uuid = zaak.uuid,
             identificatie = zaak.identificatie,
@@ -55,7 +55,7 @@ class RestZaakOverzichtConverter @Inject constructor(
 
     fun convertForDisplay(zaak: Zaak, loggedInUser: LoggedInUser): RestZaakOverzicht {
         val zaakType = ztcClientService.readZaaktype(zaak.zaaktype)
-        val zaakrechten = policyService.readZaakRechten(zaak, zaakType, loggedInUser)
+        val zaakrechten = policyService.readZaakRechten(zaak, zaakType)
         return RestZaakOverzicht(
             identificatie = zaak.identificatie,
         ).apply {

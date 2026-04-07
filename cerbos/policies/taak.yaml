@@ -33,7 +33,10 @@ resourcePolicy:
       derivedRoles: ["behandelaar"]
       condition:
         match:
-          expr: V.zaaktype_allowed
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
 
     # toekennen
     - actions: ["toekennen"]
@@ -41,7 +44,10 @@ resourcePolicy:
       derivedRoles: ["behandelaar"]
       condition:
         match:
-          expr: V.zaaktype_allowed
+          all:
+            of:
+              - expr: V.zaaktype_allowed
+              - expr: V.open
 
     # creeren_document, toevoegen_document
     - actions: ["creeren_document", "toevoegen_document"]

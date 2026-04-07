@@ -137,7 +137,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
             restInformatieobjectConverter.convertUUIDsToREST(it, zaak)
         } ?: run {
             checkNotNull(zaak) { "Zoekparameters hebben geen waarde" }
-            assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).lezen)
+            policyService.assertZaakActionAllowed("lezen", zaak)
             var enkelvoudigInformatieobjectenVoorZaak = listEnkelvoudigInformatieobjectenVoorZaak(zaak)
             if (zoekParameters.gekoppeldeZaakDocumenten) {
                 enkelvoudigInformatieobjectenVoorZaak.addAll(listGekoppeldeZaakInformatieObjectenVoorZaak(zaak))
@@ -159,7 +159,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         @PathParam("zaakUuid") zaakUuid: UUID
     ): List<RestEnkelvoudigInformatieobject> {
         val zaak = zrcClientService.readZaak(zaakUuid)
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).lezen)
+        policyService.assertZaakActionAllowed("lezen", zaak)
         return zrcClientService.listZaakinformatieobjecten(zaak)
             .map { it.informatieobject }
             .map(drcClientService::readEnkelvoudigInformatieobject)
@@ -173,7 +173,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         val informatieobjecten = restDocumentVerzendGegevens.informatieobjecten
             .map(drcClientService::readEnkelvoudigInformatieobject)
         val zaak = zrcClientService.readZaak(restDocumentVerzendGegevens.zaakUuid)
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).wijzigen)
+        policyService.assertZaakActionAllowed("wijzigen", zaak)
         informatieobjecten.forEach { assertPolicy(isVerzendenToegestaan(it)) }
         informatieobjecten.forEach {
             enkelvoudigInformatieObjectUpdateService.verzendEnkelvoudigInformatieObject(
@@ -194,7 +194,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         @Valid @MultipartForm restEnkelvoudigInformatieobject: RestEnkelvoudigInformatieobject
     ): RestEnkelvoudigInformatieobject {
         val zaak = zrcClientService.readZaak(zaakUuid)
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).toevoegenDocument)
+        policyService.assertZaakActionAllowed("toevoegen_document", zaak)
 
         val enkelvoudigInformatieObjectCreateLockRequest = restEnkelvoudigInformatieobject.run(
             restInformatieobjectConverter::convertEnkelvoudigInformatieObject
@@ -218,7 +218,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         val targetZaak = zrcClientService.readZaakByID(documentVerplaatsGegevens.nieuweZaakID)
         assertPolicy(
             policyService.readDocumentRechten(informatieobject, targetZaak).verplaatsen &&
-                policyService.readZaakRechten(targetZaak, loggedInUserInstance.get()).wijzigen
+                policyService.readZaakRechten(targetZaak).wijzigen
         )
         val toelichting = "Verplaatst: ${documentVerplaatsGegevens.bron} -> ${targetZaak.identificatie}"
         when {
@@ -269,7 +269,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
     @Path("informatieobject/{uuid}/zaakinformatieobjecten")
     fun listZaakInformatieobjecten(@PathParam("uuid") uuid: UUID): List<RestZaakInformatieobject> = uuid
         .let(drcClientService::readEnkelvoudigInformatieobject)
-        .apply { assertPolicy(policyService.readDocumentRechten(this).lezen) }
+        .apply { policyService.assertDocumentActionAllowed("lezen", this) }
         .let(zrcClientService::listZaakinformatieobjecten)
         .map(::toRestZaakInformatieobject)
 
@@ -297,7 +297,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
     ) {
         val enkelvoudigInformatieobject = drcClientService.readEnkelvoudigInformatieobject(uuid)
         val zaak = documentVerwijderenGegevens.zaakUuid?.let(zrcClientService::readZaak)
-        assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieobject, zaak).verwijderen)
+        policyService.assertDocumentActionAllowed("verwijderen", enkelvoudigInformatieobject, zaak)
         zgwApiService.removeEnkelvoudigInformatieObjectFromZaak(
             enkelvoudigInformatieobject,
             documentVerwijderenGegevens.zaakUuid,
@@ -325,7 +325,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
     @Path("/informatieobject/{uuid}/{versie}/preview")
     fun preview(@PathParam("uuid") uuid: UUID?, @PathParam("versie") versie: Int?): Response {
         val enkelvoudigInformatieObject = drcClientService.readEnkelvoudigInformatieobject(uuid)
-        assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieObject).lezen)
+        policyService.assertDocumentActionAllowed("lezen", enkelvoudigInformatieObject)
         return try {
             val inhoud = versie?.let {
                 drcClientService.downloadEnkelvoudigInformatieobjectVersie(
@@ -368,7 +368,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         @PathParam("uuid") uuid: UUID
     ): RestEnkelvoudigInformatieObjectVersieGegevens =
         drcClientService.readEnkelvoudigInformatieobject(uuid)
-            .also { assertPolicy(policyService.readDocumentRechten(it).lezen) }
+            .also { policyService.assertDocumentActionAllowed("lezen", it) }
             .let(restInformatieobjectConverter::convertToRestEnkelvoudigInformatieObjectVersieGegevens)
 
     @POST
@@ -438,7 +438,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
         @PathParam("informatieObjectUuid") informatieobjectUuid: UUID
     ): List<String> =
         drcClientService.readEnkelvoudigInformatieobject(informatieobjectUuid)
-            .apply { assertPolicy(policyService.readDocumentRechten(this).lezen) }
+            .apply { policyService.assertDocumentActionAllowed("lezen", this) }
             .let(zrcClientService::listZaakinformatieobjecten)
             .map { zrcClientService.readZaak(it.zaak).identificatie }
 
@@ -474,7 +474,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
     ): Response {
         val document = drcClientService.readEnkelvoudigInformatieobject(enkelvoudigInformatieobjectUUID)
         val zaak = zrcClientService.readZaak(zaakUUID)
-        assertPolicy(policyService.readDocumentRechten(document, zaak).converteren)
+        policyService.assertDocumentActionAllowed("converteren", document, zaak)
         enkelvoudigInformatieObjectConvertService.convertEnkelvoudigInformatieObjectToPDF(
             document,
             enkelvoudigInformatieobjectUUID
@@ -484,7 +484,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
 
     private fun retrieveDocumentContent(uuid: UUID, version: Int?): Response {
         val enkelvoudigInformatieObject = drcClientService.readEnkelvoudigInformatieobject(uuid)
-        assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieObject).downloaden)
+        policyService.assertDocumentActionAllowed("downloaden", enkelvoudigInformatieObject)
         return try {
             val documentContent = version?.let {
                 drcClientService.downloadEnkelvoudigInformatieobjectVersie(uuid, version)
@@ -559,7 +559,7 @@ class EnkelvoudigInformatieObjectRestService @Inject constructor(
     private fun toRestZaakInformatieobject(zaakInformatieobject: ZaakInformatieobject): RestZaakInformatieobject {
         val zaak = zrcClientService.readZaak(zaakInformatieobject.zaak)
         val zaaktype = ztcClientService.readZaaktype(zaak.getZaaktype())
-        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype, loggedInUserInstance.get())
+        val zaakrechten = policyService.readZaakRechten(zaak, zaaktype)
         return RestZaakInformatieobject(
             zaakIdentificatie = zaak.getIdentificatie(),
             zaakRechten = zaakrechten.toRestZaakRechten(),

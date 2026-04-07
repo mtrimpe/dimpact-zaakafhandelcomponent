@@ -62,7 +62,6 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.exception.ErrorCode
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.search.IndexingService
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import nl.info.zac.shared.helper.SuspensionZaakHelper
@@ -124,11 +123,8 @@ class TaskRestService @Inject constructor(
     @GET
     @Path("zaak/{zaakUUID}")
     fun listTasksForZaak(@PathParam("zaakUUID") zaakUUID: UUID): List<RestTask> {
-        val loggedInUser = loggedInUserInstance.get()
         val zaak = zrcClientService.readZaak(zaakUUID)
-        assertPolicy(
-            policyService.readZaakRechten(zaak, loggedInUser).lezen
-        )
+        policyService.assertZaakActionAllowed("lezen", zaak)
         return taskService.listTasksForZaak(zaakUUID).let(restTaskConverter::convert)
     }
 
@@ -136,7 +132,7 @@ class TaskRestService @Inject constructor(
     @Path("{taskId}")
     fun readTask(@PathParam("taskId") taskId: String): RestTask {
         flowableTaskService.readTask(taskId).let { task ->
-            assertPolicy(policyService.readTaakRechten(task).lezen)
+            policyService.assertTaakActionAllowed("lezen", task)
             deleteSignaleringen(task)
             val restTask = restTaskConverter.convert(task)
             if (TaskUtil.isOpen(task)) {
@@ -153,7 +149,7 @@ class TaskRestService @Inject constructor(
     @Path("taakdata")
     fun updateTaskData(restTask: RestTask): RestTask {
         flowableTaskService.readOpenTask(restTask.id).let {
-            assertPolicy(TaskUtil.isOpen(it) && policyService.readTaakRechten(it).wijzigen)
+            policyService.assertTaakActionAllowed("wijzigen", it)
             taakVariabelenService.setTaskData(it, restTask.taakdata)
             taakVariabelenService.setTaskinformation(it, restTask.taakinformatie)
             val updatedTask = updateDescriptionAndDueDate(restTask)
@@ -176,7 +172,7 @@ class TaskRestService @Inject constructor(
     fun assignTasksFromList(@Valid restTaskDistributeData: RestTaskDistributeData) {
         // Only the 'zaken taken verdelen' permission is currently required to assign tasks from the list.
         // Checking the user's authorization for each task's zaaktype could improve this in the future.
-        assertPolicy(policyService.readWerklijstRechten().zakenTakenVerdelen)
+        policyService.assertWerklijstActionAllowed("zaken_taken_verdelen")
         // this can be a long-running operation so run it asynchronously
         CoroutineScope(dispatcher).launch {
             taskService.assignTasks(
@@ -190,7 +186,7 @@ class TaskRestService @Inject constructor(
     @PUT
     @Path("lijst/vrijgeven")
     fun releaseTaskFromList(@Valid restTaskReleaseData: RestTaskReleaseData) {
-        assertPolicy(policyService.readWerklijstRechten().zakenTakenVerdelen)
+        policyService.assertWerklijstActionAllowed("zaken_taken_verdelen")
         // this can be a long-running operation so run it asynchronously
         CoroutineScope(dispatcher).launch {
             taskService.releaseTasks(
@@ -207,7 +203,7 @@ class TaskRestService @Inject constructor(
         restTaskAssignData: RestTaskAssignData
     ): RestTask {
         // Checking the user's authorization for the task's zaaktype could improve this in the future.
-        assertPolicy(policyService.readWerklijstRechten().zakenTaken)
+        policyService.assertWerklijstActionAllowed("zaken_taken")
         val task = assignLoggedInUserToTask(restTaskAssignData)
         return restTaskConverter.convert(task)
     }
@@ -216,7 +212,7 @@ class TaskRestService @Inject constructor(
     @Path("toekennen")
     fun assignTask(restTaskAssignData: RestTaskAssignData) {
         val task = flowableTaskService.readOpenTask(restTaskAssignData.taakId)
-        assertPolicy(TaskUtil.isOpen(task) && policyService.readTaakRechten(task).toekennen)
+        policyService.assertTaakActionAllowed("toekennen", task)
         taskService.assignOrReleaseTask(
             restTaskAssignData,
             task,
@@ -233,7 +229,7 @@ class TaskRestService @Inject constructor(
     @Path("complete")
     fun completeTask(restTask: RestTask): RestTask {
         val task = flowableTaskService.readOpenTask(restTask.id)
-        assertPolicy(TaskUtil.isOpen(task) && policyService.readTaakRechten(task).wijzigen)
+        policyService.assertTaakActionAllowed("wijzigen", task)
 
         val loggedInUserId = loggedInUserInstance.get().id
         if (restTask.behandelaar == null || restTask.behandelaar!!.id != loggedInUserId) {
@@ -304,13 +300,13 @@ class TaskRestService @Inject constructor(
     @GET
     @Path("{taskId}/historie")
     fun listHistory(@PathParam("taskId") taskId: String): List<RestTaskHistoryLine> {
-        assertPolicy(policyService.readTaakRechten(flowableTaskService.readTask(taskId)).lezen)
+        policyService.assertTaakActionAllowed("lezen", flowableTaskService.readTask(taskId))
         return flowableTaskService.listHistorieForTask(taskId).let(taakHistorieConverter::convert)
     }
 
     private fun assignLoggedInUserToTask(restTaskAssignData: RestTaskAssignData): Task {
         val task = flowableTaskService.readOpenTask(restTaskAssignData.taakId)
-        assertPolicy(TaskUtil.isOpen(task) && policyService.readTaakRechten(task).toekennen)
+        policyService.assertTaakActionAllowed("toekennen", task)
         taskService.assignTaskToUser(
             taskId = task.id,
             assignee = loggedInUserInstance.get().id,
@@ -383,7 +379,7 @@ class TaskRestService @Inject constructor(
                         }
                         throw InputValidationFailedException(ErrorCode.ERROR_CODE_DOCUMENT_HAS_ALREADY_BEEN_SIGNED)
                     }
-                    assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieobject, zaak).ondertekenen)
+                    policyService.assertDocumentActionAllowed("ondertekenen", enkelvoudigInformatieobject, zaak)
                     enkelvoudigInformatieObjectUpdateService.ondertekenEnkelvoudigInformatieObject(
                         enkelvoudigInformatieobject.url.extractUuid()
                     )

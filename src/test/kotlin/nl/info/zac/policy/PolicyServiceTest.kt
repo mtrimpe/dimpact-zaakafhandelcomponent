@@ -136,7 +136,7 @@ class PolicyServiceTest : BehaviorSpec({
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
-                val zaakRechten = policyService.readZaakRechten(zaak, loggedInUser)
+                val zaakRechten = policyService.readZaakRechten(zaak)
 
                 Then("the returned zaakrechten are correct") {
                     zaakRechten shouldBe expectedZaakRechten
@@ -181,7 +181,7 @@ class PolicyServiceTest : BehaviorSpec({
             every { configurationService.featureFlagPabcIntegration() } returns false
 
             When("policy rights are requested") {
-                val zaakRechten = policyService.readZaakRechten(zaak, loggedInUser)
+                val zaakRechten = policyService.readZaakRechten(zaak)
 
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
@@ -219,7 +219,7 @@ class PolicyServiceTest : BehaviorSpec({
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
-                val zaakRechten = policyService.readZaakRechten(zaak, loggedInUser)
+                val zaakRechten = policyService.readZaakRechten(zaak)
 
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten
@@ -257,7 +257,7 @@ class PolicyServiceTest : BehaviorSpec({
             every { configurationService.featureFlagPabcIntegration() } returns true
 
             When("policy rights are requested") {
-                val zaakRechten = policyService.readZaakRechten(zaak, loggedInUser)
+                val zaakRechten = policyService.readZaakRechten(zaak)
 
                 Then("correct ZaakData is sent to OPA") {
                     zaakRechten shouldBe expectedZaakRechten

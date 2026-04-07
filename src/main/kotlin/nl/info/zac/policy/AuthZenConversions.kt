@@ -82,6 +82,16 @@ fun UserInput.extractAuthZenResource(): AuthZenResource = when (this) {
 }
 
 /**
+ * Build an [EvaluationRequest] from a ZAC [UserInput] for a single action.
+ */
+fun UserInput.toEvaluationRequest(actionName: String): EvaluationRequest =
+    EvaluationRequest(
+        subject = this.subject.toAuthZenSubject(),
+        action = AuthZenAction(name = actionName),
+        resource = this.extractAuthZenResource()
+    )
+
+/**
  * Build an [EvaluationsRequest] from any ZAC [UserInput] subtype.
  * Uses shared subject/resource at the top level, with one [EvaluationRequest] per candidate action.
  */

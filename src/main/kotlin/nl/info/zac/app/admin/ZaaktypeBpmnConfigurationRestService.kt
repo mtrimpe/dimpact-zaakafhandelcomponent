@@ -32,7 +32,6 @@ import nl.info.zac.app.admin.model.toZaaktypeBrpParameters
 import nl.info.zac.app.admin.model.toZaaktypeCompletionParametersList
 import nl.info.zac.app.zaak.model.toRestResultaatType
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import java.util.UUID
@@ -53,7 +52,7 @@ class ZaaktypeBpmnConfigurationRestService @Inject constructor(
 ) {
     @GET
     fun listZaaktypeBpmnConfigurations(): List<RestZaaktypeBpmnConfiguration> {
-        assertPolicy(policyService.readOverigeRechten().startenZaak || policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("zaaktype_inzien")
         return zaaktypeBpmnConfigurationBeheerService.listConfigurations().map {
             it.toRestZaaktypeBpmnConfiguration()
         }
@@ -64,7 +63,7 @@ class ZaaktypeBpmnConfigurationRestService @Inject constructor(
     fun getZaaktypeBpmnConfiguration(
         @NotEmpty @PathParam("processDefinitionKey") processDefinitionKey: String
     ): RestZaaktypeBpmnConfiguration {
-        assertPolicy(policyService.readOverigeRechten().startenZaak || policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("zaaktype_inzien")
         val processDefinitions = zaaktypeBpmnConfigurationBeheerService
             .listConfigurations()
             .filter { it.bpmnProcessDefinitionKey == processDefinitionKey }
@@ -91,7 +90,7 @@ class ZaaktypeBpmnConfigurationRestService @Inject constructor(
     fun createOrUpdateZaaktypeBpmnConfiguration(
         @Valid restZaaktypeBpmnConfiguration: RestZaaktypeBpmnConfiguration
     ): RestZaaktypeBpmnConfiguration {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         checkNotNull(restZaaktypeBpmnConfiguration.groepNaam) { "groepNaam must not be null" }
         restZaaktypeBpmnConfiguration.productaanvraagtype?.let {
             checkIfProductaanvraagtypeIsNotAlreadyInUse(

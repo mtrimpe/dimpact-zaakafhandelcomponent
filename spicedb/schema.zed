@@ -113,10 +113,10 @@ definition taak {
     relation behandelaar: role#member
 
     permission lezen = raadpleger
-    permission wijzigen = behandelaar
-    permission toekennen = behandelaar
 
     relation behandelaar_when_open: role#member with taak_is_open
+    permission wijzigen = behandelaar_when_open
+    permission toekennen = behandelaar_when_open
     permission creeren_document = behandelaar_when_open
     permission toevoegen_document = behandelaar_when_open
 }
@@ -164,6 +164,7 @@ definition application {
     permission starten_zaak = behandelaar
     permission beheren = beheerder
     permission zoeken = raadpleger
+    permission zaaktype_inzien = behandelaar + beheerder
 }
 
 definition werklijst {

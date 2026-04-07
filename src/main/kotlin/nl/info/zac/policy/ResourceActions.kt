@@ -13,8 +13,8 @@ object ResourceActions {
         "bekijken_zaakdata", "wijzigen_doorlooptijd", "verlengen", "opschorten", "hervatten",
         "creeren_document", "toevoegen_document", "koppelen", "versturen_email",
         "versturen_ontvangstbevestiging", "toevoegen_initiator_persoon", "toevoegen_initiator_bedrijf",
-        "verwijderen_initiator", "toevoegen_betrokkene_persoon", "toevoegen_betrokkene_bedrijf",
-        "verwijderen_betrokkene", "toevoegen_bag_object", "starten_taak", "vastleggen_besluit",
+        "verwijderen_initiator", "verwijderen_betrokkene",
+        "toevoegen_bag_object", "starten_taak", "vastleggen_besluit",
         "verlengen_doorlooptijd", "wijzigen_locatie"
     )
 
@@ -29,7 +29,7 @@ object ResourceActions {
 
     val NOTITIE = listOf("lezen", "wijzigen")
 
-    val APPLICATION = listOf("starten_zaak", "beheren", "zoeken")
+    val APPLICATION = listOf("starten_zaak", "beheren", "zoeken", "zaaktype_inzien")
 
     val WERKLIJST = listOf(
         "inbox", "ontkoppelde_documenten_verwijderen", "inbox_productaanvragen_verwijderen",

@@ -25,7 +25,6 @@ import net.atos.zac.documenten.model.InboxDocument
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import java.util.UUID
@@ -52,7 +51,7 @@ class InboxDocumentenRestService @Inject constructor(
     @PUT
     @Path("")
     fun listInboxDocuments(restListParameters: RestInboxDocumentListParameters?): RESTResultaat<RestInboxDocument> {
-        assertPolicy(policyService.readWerklijstRechten().inbox)
+        policyService.assertWerklijstActionAllowed("inbox")
         val listParameters = listParametersConverter.convert(restListParameters)
         val inboxDocuments = inboxDocumentenService.list(listParameters)
         val informationObjectTypeUUIDs = inboxDocuments.stream().map(::getInformatieobjectTypeUUID).toList()
@@ -81,7 +80,7 @@ class InboxDocumentenRestService @Inject constructor(
     @DELETE
     @Path("{id}")
     fun deleteInboxDocument(@PathParam("id") id: Long) {
-        assertPolicy(policyService.readWerklijstRechten().inbox)
+        policyService.assertWerklijstActionAllowed("inbox")
         val inboxDocument = inboxDocumentenService.find(id)
         if (inboxDocument.isEmpty()) {
             return // reeds verwijderd

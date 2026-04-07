@@ -21,7 +21,6 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.healthcheck.HealthCheckService
 import nl.info.zac.healthcheck.model.ZaaktypeInrichtingscheck
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.NoArgConstructor
 import java.time.ZonedDateTime
 
@@ -39,7 +38,7 @@ class HealthCheckRestService @Inject constructor(
     @GET
     @Path("zaaktypes")
     fun listZaaktypeInrichtingschecks(): List<RESTZaaktypeInrichtingscheck> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return listZaaktypes().map {
             convertToREST(healthCheckService.controleerZaaktype(it.url))
         }
@@ -48,14 +47,14 @@ class HealthCheckRestService @Inject constructor(
     @GET
     @Path("bestaat-communicatiekanaal-eformulier")
     fun readBestaatCommunicatiekanaalEformulier(): Boolean {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return healthCheckService.bestaatCommunicatiekanaalEformulier()
     }
 
     @DELETE
     @Path("ztc-cache")
     fun clearZTCCaches(): ZonedDateTime {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         ztcClientService.clearZaaktypeCache()
         ztcClientService.clearStatustypeCache()
         ztcClientService.clearResultaattypeCache()
@@ -70,7 +69,7 @@ class HealthCheckRestService @Inject constructor(
     @GET
     @Path("ztc-cache")
     fun readZTCCacheTime(): ZonedDateTime {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return ztcClientService.resetCacheTimeToNow()
     }
 

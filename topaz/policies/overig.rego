@@ -22,3 +22,7 @@ beheren if { beheerder.rol in user.rollen }
 
 default zoeken := false
 zoeken if { raadpleger.rol in user.rollen }
+
+default zaaktype_inzien := false
+zaaktype_inzien if { behandelaar.rol in user.rollen }
+zaaktype_inzien if { beheerder.rol in user.rollen }

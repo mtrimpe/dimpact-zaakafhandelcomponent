@@ -330,7 +330,7 @@ class ZaakRestServiceReadDownloadListTest : BehaviorSpec({
             every {
                 zaakService.readZaakAndZaakTypeByZaakUUID(zaakUUID)
             } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns zaakRechten
+            every { policyService.readZaakRechten(zaak, zaakType) } returns zaakRechten
             every { restZaakConverter.toRestZaak(zaak, zaakType, zaakRechten, loggedInUser) } returns restZaak
             every { signaleringService.deleteSignaleringenForZaak(zaak) } returns 1
             every { loggedInUserInstance.get() } returns loggedInUser
@@ -402,7 +402,7 @@ class ZaakRestServiceReadDownloadListTest : BehaviorSpec({
             )
             val loggedInUser = createLoggedInUser()
             every { zaakService.readZaakAndZaakTypeByZaakUUID(zaak.uuid) } returns Pair(zaak, zaakType)
-            every { policyService.readZaakRechten(zaak, zaakType, loggedInUser) } returns createZaakRechten()
+            every { policyService.readZaakRechten(zaak, zaakType) } returns createZaakRechten()
             every { zaakService.listBetrokkenenforZaak(zaak) } returns betrokkeneRoles
             every { identificationService.replaceBsnWithKey(rolNatuurlijkPersoon.identificatienummer!!) } returns expectedPersonId
             every { loggedInUserInstance.get() } returns loggedInUser

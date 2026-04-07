@@ -5,14 +5,11 @@
 package net.atos.zac.app.bag;
 
 import static java.util.stream.Collectors.joining;
-import static nl.info.zac.policy.PolicyServiceKt.assertPolicy;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.Consumes;
@@ -45,7 +42,6 @@ import nl.info.client.bag.model.BevraagAdressenParameters;
 import nl.info.client.zgw.zrc.ZrcClientService;
 import nl.info.client.zgw.zrc.model.generated.ObjectTypeEnum;
 import nl.info.client.zgw.zrc.model.generated.Zaak;
-import nl.info.zac.authentication.LoggedInUser;
 import nl.info.zac.policy.PolicyService;
 
 @Path("bag")
@@ -56,7 +52,6 @@ public class BagRestService {
     private BagClientService bagClientService;
     private ZrcClientService zrcClientService;
     private PolicyService policyService;
-    private Instance<LoggedInUser> loggedInUserInstance;
 
     /**
      * No-arg constructor for CDI.
@@ -68,13 +63,11 @@ public class BagRestService {
     public BagRestService(
             BagClientService bagClientService,
             ZrcClientService zrcClientService,
-            PolicyService policyService,
-            Instance<LoggedInUser> loggedInUserInstance
+            PolicyService policyService
     ) {
         this.bagClientService = bagClientService;
         this.zrcClientService = zrcClientService;
         this.policyService = policyService;
-        this.loggedInUserInstance = loggedInUserInstance;
     }
 
     @PUT
@@ -110,9 +103,8 @@ public class BagRestService {
 
     @POST
     public void create(final RESTBAGObjectGegevens bagObjectGegevens) {
-        final LoggedInUser loggedInUser = loggedInUserInstance.get();
         final Zaak zaak = zrcClientService.readZaak(bagObjectGegevens.zaakUuid);
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUser).getToevoegenBagObject());
+        policyService.assertZaakActionAllowed("toevoegen_bag_object", zaak);
         if (isNogNietGekoppeld(bagObjectGegevens.getBagObject(), zaak)) {
             zrcClientService.createZaakobject(RestBagConverter.convertToZaakobject(bagObjectGegevens.getBagObject(), zaak));
         }
@@ -120,9 +112,8 @@ public class BagRestService {
 
     @DELETE
     public void delete(final RESTBAGObjectGegevens bagObjectGegevens) {
-        final LoggedInUser loggedInUser = loggedInUserInstance.get();
         final Zaak zaak = zrcClientService.readZaak(bagObjectGegevens.zaakUuid);
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUser).getBehandelen());
+        policyService.assertZaakActionAllowed("behandelen", zaak);
         final Zaakobject zaakobject = zrcClientService.readZaakobject(bagObjectGegevens.uuid);
         zrcClientService.deleteZaakobject(zaakobject, bagObjectGegevens.redenWijzigen);
     }
@@ -130,10 +121,9 @@ public class BagRestService {
     @GET
     @Path("zaak/{zaakUuid}")
     public List<RESTBAGObjectGegevens> listBagObjectsForZaak(@PathParam("zaakUuid") final UUID zaakUUID) {
-        final LoggedInUser loggedInUser = loggedInUserInstance.get();
         final ZaakobjectListParameters zaakobjectListParameters = new ZaakobjectListParameters();
         final Zaak zaak = zrcClientService.readZaak(zaakUUID);
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUser).getLezen());
+        policyService.assertZaakActionAllowed("lezen", zaak);
         zaakobjectListParameters.setZaak(zaak.getUrl());
         final Results<Zaakobject> zaakobjecten = zrcClientService.listZaakobjecten(zaakobjectListParameters);
         if (zaakobjecten.count() > 0) {

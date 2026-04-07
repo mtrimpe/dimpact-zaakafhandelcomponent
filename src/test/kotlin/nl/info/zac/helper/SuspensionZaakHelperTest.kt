@@ -99,7 +99,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
 
             When("the zaak is postponed for x days from user with access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(opschorten = true)
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(opschorten = true)
 
                 val returnedZaak = suspensionZaakHelper.suspendZaak(
                     zaak,
@@ -130,7 +130,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             }
 
             When("the zaak is postponed for x days from user with no access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny()
 
                 val exception = shouldThrow<PolicyException> {
                     suspensionZaakHelper.suspendZaak(
@@ -173,7 +173,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
 
             When("the zaak is resumed from user with access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(hervatten = true)
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(hervatten = true)
 
                 suspensionZaakHelper.resumeZaak(zaak, reasonResumed)
 
@@ -196,7 +196,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             }
 
             When("the zaak is resumed from user with no access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny()
 
                 val exception = shouldThrow<PolicyException> { suspensionZaakHelper.resumeZaak(zaak, reasonResumed) }
 
@@ -230,7 +230,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             } returns createZaak()
             every { zaakVariabelenService.removeDatumtijdOpgeschort(zaak.uuid) } just runs
             every { zaakVariabelenService.removeVerwachteDagenOpgeschort(zaak.uuid) } just runs
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(hervatten = true)
+            every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(hervatten = true)
             every { loggedInUserInstance.get() } returns loggedInUser
 
             When("the zaak is resumed with default resume date (today)") {
@@ -329,7 +329,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
 
             When("extension of the final date is requested from user with access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(
                     wijzigen = true,
                     verlengenDoorlooptijd = true
                 )
@@ -343,7 +343,7 @@ class SuspensionZaakHelperTest : BehaviorSpec({
             }
 
             When("extension of the final date is requested from user with no access") {
-                every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+                every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny()
 
                 val exception = shouldThrow<PolicyException> {
                     suspensionZaakHelper.extendZaakFatalDate(zaak, 1, extensionDescription)

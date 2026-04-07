@@ -157,8 +157,6 @@ class SearchRestServiceTest : BehaviorSpec({
                               "lezen" : true,
                               "toekennen" : false,
                               "toevoegenBagObject" : false,
-                              "toevoegenBetrokkeneBedrijf" : false,
-                              "toevoegenBetrokkenePersoon" : false,
                               "toevoegenInitiatorBedrijf" : false,
                               "toevoegenInitiatorPersoon" : false,
                               "versturenEmail" : false,

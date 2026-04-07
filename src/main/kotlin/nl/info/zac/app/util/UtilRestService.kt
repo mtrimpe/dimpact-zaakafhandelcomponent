@@ -14,7 +14,6 @@ import net.atos.client.zgw.shared.cache.Caching
 import net.atos.zac.admin.ZaaktypeCmmnConfigurationService
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.sensitive.SensitiveDataService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -148,7 +147,7 @@ class UtilRestService @Inject constructor(
         )
     }
 
-    private fun checkBeherenPolicy() = assertPolicy(policyService.readOverigeRechten().beheren)
+    private fun checkBeherenPolicy() = policyService.assertOverigeActionAllowed("beheren")
 
     private fun clearZtcClientCaches() =
         ZTC + ul(

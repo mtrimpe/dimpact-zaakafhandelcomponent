@@ -29,7 +29,6 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.enkelvoudiginformatieobject.EnkelvoudigInformatieObjectLockService
 import nl.info.zac.enkelvoudiginformatieobject.model.EnkelvoudigInformatieObjectLock
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import java.time.LocalDate
@@ -134,7 +133,9 @@ class EnkelvoudigInformatieObjectUpdateService @Inject constructor(
         try {
             val task = flowableTaskService.findOpenTask(taskId)
                 ?: throw TaskNotFoundException("No open task found with task id: '$taskId'")
-            assertPolicy(skipPolicyCheck || policyService.readTaakRechten(task).toevoegenDocument)
+            if (!skipPolicyCheck) {
+                policyService.assertTaakActionAllowed("toevoegen_document", task)
+            }
 
             mutableListOf<UUID>().apply {
                 addAll(readTaskDocuments(task))

@@ -132,7 +132,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         When(
             "the enkelvoudig informatieobject update is done by a role that is allowed to change the zaak"
         ) {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+            every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(
                 toevoegenDocument = true
             )
 
@@ -158,7 +158,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         When(
             "the enkelvoudig informatieobject update is triggered but the ZGW client service throws an exception"
         ) {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+            every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(
                 toevoegenDocument = true
             )
             every {
@@ -188,7 +188,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         }
 
         When("the enkelvoudig informatieobject is updated") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+            every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny(
                 toevoegenDocument = true
             )
             restEnkelvoudigInformatieobject.file = restFileUpload.file
@@ -214,7 +214,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         }
 
         When("enkelvoudig informatieobject is updated by a user that has no access") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+            every { policyService.readZaakRechten(zaak) } returns createZaakRechtenAllDeny()
 
             val exception = shouldThrow<PolicyException> {
                 enkelvoudigInformatieObjectRestService.createEnkelvoudigInformatieobjectAndUploadFile(
@@ -261,7 +261,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         When(
             "the enkelvoudig informatieobject is updated by a role that is allowed to change the zaak"
         ) {
-            every { policyService.readZaakRechten(closedZaak, loggedInUser) } returns createZaakRechtenAllDeny(
+            every { policyService.readZaakRechten(closedZaak) } returns createZaakRechtenAllDeny(
                 toevoegenDocument = true
             )
 
@@ -428,7 +428,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
         val loggedInUser = createLoggedInUser()
 
         every { zrcClientService.readZaak(zaakUuid) } returns zaak
-        every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechten()
+        every { policyService.readZaakRechten(zaak) } returns createZaakRechten()
         every { zrcClientService.listZaakinformatieobjecten(zaak) } returns zaakInformatieobjecten
         every {
             restInformatieobjectConverter.convertToREST(zaakInformatieobjecten[0])
@@ -610,7 +610,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
             } returns enkelvoudigeInformatieobjecten[index]
         }
         every { zrcClientService.readZaak(zaakUuid) } returns zaak
-        every { policyService.readZaakRechten(zaak, loggedInUser).wijzigen } returns true
+        every { policyService.readZaakRechten(zaak).wijzigen } returns true
         every {
             enkelvoudigInformatieObjectUpdateService.verzendEnkelvoudigInformatieObject(any(), any(), any())
         } just Runs
@@ -641,7 +641,7 @@ class EnkelvoudigInformatieObjectRestServiceTest : BehaviorSpec({
             drcClientService.readEnkelvoudigInformatieobject(enkelvoudigInformatieObjectUuids[0])
         } returns enkelvoudigInformatieObject
         every { zrcClientService.readZaak(zaakUuid) } returns zaak
-        every { policyService.readZaakRechten(zaak, loggedInUser).wijzigen } returns false
+        every { policyService.readZaakRechten(zaak).wijzigen } returns false
         every { loggedInUserInstance.get() } returns loggedInUser
 
         When("sendDocument is called") {

@@ -15,7 +15,6 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import net.atos.zac.flowable.ZaakVariabelenService
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.util.NoArgConstructor
 import org.flowable.cmmn.api.CmmnRuntimeService
 import org.flowable.cmmn.api.CmmnTaskService
@@ -47,7 +46,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("countmissingvariables")
     fun countMissingVariables(): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         countMissingVariable(ZaakVariabelenService.VAR_ZAAK_UUID)
         countMissingVariable(ZaakVariabelenService.VAR_ZAAK_IDENTIFICATIE)
         countMissingVariable(ZaakVariabelenService.VAR_ZAAKTYPE_UUID)
@@ -58,7 +57,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("logzaaktypeuuid")
     fun logExistingZaaktypeUUID(): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         cmmnRuntimeService.createCaseInstanceQuery().variableExists(
             ZaakVariabelenService.VAR_ZAAKTYPE_UUID
         ).list().forEach { caseInstance ->
@@ -73,7 +72,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("fixmissingzaaktypeuuid/{zaaktypeuuid}")
     fun fixMissingZaaktypeUUID(@PathParam("zaaktypeuuid") zaaktypeUUIDString: String): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val zaaktypeUUID = UUID.fromString(zaaktypeUUIDString)
         cmmnRuntimeService.createCaseInstanceQuery().variableNotExists(
             ZaakVariabelenService.VAR_ZAAKTYPE_UUID
@@ -90,7 +89,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("fixexistingzaaktypeuuid/{zaaktypeuuid}")
     fun fixAllZaaktypeUUID(@PathParam("zaaktypeuuid") zaaktypeUUIDString: String): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val zaaktypeUUID = UUID.fromString(zaaktypeUUIDString)
         cmmnRuntimeService.createCaseInstanceQuery().variableExists(
             ZaakVariabelenService.VAR_ZAAKTYPE_UUID
@@ -107,7 +106,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("logtasksmissingscopeid")
     fun logTasksMissingScopeId(): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         val tasks = cmmnTaskService.createTaskQuery().list().filter { it.scopeId == null }
         LOG.info("Number of tasks missing scopeId : ${tasks.size}")
         tasks.forEach {
@@ -119,7 +118,7 @@ class ZacCmmnAdminUtilRestService @Inject constructor(
     @GET
     @Path("completetasksmissingscopeid")
     fun completeTasksMissingScopeId(): Response {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         runtimeService.createActivityInstanceQuery().list()
             .forEach {
                 runtimeService.deleteProcessInstance(

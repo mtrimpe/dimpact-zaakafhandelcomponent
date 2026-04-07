@@ -46,7 +46,6 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.smartdocuments.SmartDocumentsTemplatesService
 import nl.info.zac.smartdocuments.rest.RestMappedSmartDocumentsTemplateGroup
 import nl.info.zac.smartdocuments.rest.RestSmartDocumentsPath
@@ -87,7 +86,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("case-definitions")
     fun listCaseDefinitions(): List<RESTCaseDefinition> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return cmmnService.listCaseDefinitions()
             .map { caseDefinitionConverter.convertToRESTCaseDefinition(it, true) }
     }
@@ -101,7 +100,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("case-definitions/{key}")
     fun readCaseDefinition(@PathParam("key") caseDefinitionKey: String): RESTCaseDefinition {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return caseDefinitionConverter.convertToRESTCaseDefinition(caseDefinitionKey, true)
     }
 
@@ -112,7 +111,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
      */
     @GET
     fun listZaaktypeCmmnConfiguration(): List<RestZaakafhandelParameters> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return ztcClientService.listZaaktypen(configurationService.readDefaultCatalogusURI())
             .map { it.url.extractUuid() }
             .map(zaaktypeCmmnConfigurationService::readZaaktypeCmmnConfiguration)
@@ -134,7 +133,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("{zaaktypeUUID}")
     fun readZaaktypeConfiguration(@PathParam("zaaktypeUUID") zaakTypeUUID: UUID): RestZaakafhandelParameters {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         zaaktypeConfigurationService.readZaaktypeConfiguration(zaakTypeUUID)?.let {
             return when (it.getConfigurationType()) {
                 CMMN -> {
@@ -174,7 +173,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     fun createOrUpdateZaaktypeCmmnConfiguration(
         @Valid restZaakafhandelParameters: RestZaakafhandelParameters
     ): RestZaakafhandelParameters {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
 
         restZaakafhandelParameters.productaanvraagtype?.also { productaanvraagtype ->
             restZaakafhandelParameters.zaaktype.omschrijving?.also {
@@ -213,7 +212,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("zaakbeeindigredenen")
     fun listZaakbeeindigRedenen(): List<RestZaakbeeindigReden> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return RESTZaakbeeindigRedenConverter.convertZaakbeeindigRedenen(
             zaaktypeCmmnConfigurationBeheerService.listZaakbeeindigRedenen()
         )
@@ -242,7 +241,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("resultaattypes/{zaaktypeUUID}")
     fun listResultaattypesForZaaktypeForAdmins(@PathParam("zaaktypeUUID") zaaktypeUUID: UUID): List<RestResultaattype> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return ztcClientService.readResultaattypen(
             ztcClientService.readZaaktype(zaaktypeUUID).url
         ).toRestResultaatTypes()
@@ -288,7 +287,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
     @GET
     @Path("smartdocuments-templates")
     fun listSmartDocumentsTemplates(): Set<RestSmartDocumentsTemplateGroup> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
         return smartDocumentsTemplatesService.listTemplates()
     }
 
@@ -324,7 +323,7 @@ class ZaaktypeCmmnConfigurationRestService @Inject constructor(
         @PathParam("zaakafhandelUUID") zaakafhandelParameterUUID: UUID,
         restTemplateGroups: Set<RestMappedSmartDocumentsTemplateGroup>
     ) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        policyService.assertOverigeActionAllowed("beheren")
 
         val smartDocumentsTemplates = smartDocumentsTemplatesService.listTemplates()
         restTemplateGroups isSubsetOf smartDocumentsTemplates

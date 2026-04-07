@@ -68,6 +68,34 @@
         </Match>
       </AllOf></AnyOf></Target>
     </Rule>
+    <Rule RuleId="app-zaaktype_inzien" Effect="Permit">
+      <Target><AnyOf>
+        <AllOf>
+          <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">zaaktype_inzien</AttributeValue>
+            <AttributeDesignator Category="urn:oasis:names:tc:xacml:3.0:attribute-category:action"
+              AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-id" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+          </Match>
+          <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">behandelaar</AttributeValue>
+            <AttributeDesignator Category="urn:oasis:names:tc:xacml:1.0:subject-category:access-subject"
+              AttributeId="rollen" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+          </Match>
+        </AllOf>
+        <AllOf>
+          <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">zaaktype_inzien</AttributeValue>
+            <AttributeDesignator Category="urn:oasis:names:tc:xacml:3.0:attribute-category:action"
+              AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-id" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+          </Match>
+          <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">beheerder</AttributeValue>
+            <AttributeDesignator Category="urn:oasis:names:tc:xacml:1.0:subject-category:access-subject"
+              AttributeId="rollen" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+          </Match>
+        </AllOf>
+      </AnyOf></Target>
+    </Rule>
   </Policy>
 
   <!-- ═══ Notitie permissions ═══ -->
@@ -230,8 +258,8 @@
         </Match>
       </AllOf></AnyOf></Target>
     </Rule>
-    <!-- behandelaar: wijzigen, toekennen (unconditional) -->
-    <Rule RuleId="taak-wijzigen-behandelaar" Effect="Permit">
+    <!-- behandelaar when open: wijzigen, toekennen, creeren_document, toevoegen_document -->
+    <Rule RuleId="taak-open-behandelaar" Effect="Permit">
       <Target><AnyOf>
         <AllOf>
           <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
@@ -257,11 +285,6 @@
               AttributeId="rollen" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
           </Match>
         </AllOf>
-      </AnyOf></Target>
-    </Rule>
-    <!-- behandelaar when open: creeren_document, toevoegen_document -->
-    <Rule RuleId="taak-open-behandelaar" Effect="Permit">
-      <Target><AnyOf>
         <AllOf>
           <Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
             <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">creeren_document</AttributeValue>

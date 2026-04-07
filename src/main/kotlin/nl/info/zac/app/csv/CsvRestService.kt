@@ -19,7 +19,6 @@ import net.atos.zac.util.MediaTypes
 import nl.info.zac.app.search.converter.RestZoekParametersConverter
 import nl.info.zac.app.search.model.RestZoekParameters
 import nl.info.zac.policy.PolicyService
-import nl.info.zac.policy.assertPolicy
 import nl.info.zac.search.SearchService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -39,7 +38,7 @@ class CsvRestService @Inject constructor(
     @POST
     @Path("export")
     fun downloadCSV(@Valid restZoekParameters: RestZoekParameters): Response {
-        assertPolicy(policyService.readWerklijstRechten().zakenTakenExporteren)
+        policyService.assertWerklijstActionAllowed("zaken_taken_exporteren")
         val zoekParameters = restZoekParametersConverter.convert(restZoekParameters).let {
             // if no max nr of result rows are specified, resort to the default value
             if (it.rows == 0) {

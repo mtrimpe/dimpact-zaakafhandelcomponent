@@ -16,7 +16,8 @@ user := input.subject.properties
 _all_overige_rechten := {
     "starten_zaak": starten_zaak,
     "beheren": beheren,
-    "zoeken": zoeken
+    "zoeken": zoeken,
+    "zaaktype_inzien": zaaktype_inzien
 }
 
 overige_rechten := {"results": [action | some name; _all_overige_rechten[name] == true; action := {"name": name}]}
@@ -34,4 +35,12 @@ beheren if {
 default zoeken := false
 zoeken if {
     raadpleger.rol in user.rollen
+}
+
+default zaaktype_inzien := false
+zaaktype_inzien if {
+    behandelaar.rol in user.rollen
+}
+zaaktype_inzien if {
+    beheerder.rol in user.rollen
 }
