@@ -101,8 +101,14 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
         private val zacDockerImage = System.getProperty("zacDockerImage") ?: ZAC_DEFAULT_DOCKER_IMAGE
         private val skipDockerComposeStart = System.getenv(DO_NOT_START_DOCKER_COMPOSE_ENV_VAR)?.toBoolean() ?: false
         private val skipContainerCleanup = System.getenv(TESTCONTAINERS_RYUK_DISABLED_ENV_VAR)?.toBoolean() ?: false
-        private val authorizationBackend = System.getenv(AUTHORIZATION_BACKEND_ENV_VAR) ?: "kotlin"
-        private val useAlternateBackend = authorizationBackend !in listOf("kotlin", "opa")
+        // The PDP selector identifies which docker-compose profile and URL to use.
+        // For PDPs with native AuthZEN APIs (cerbos, openftv), ZAC uses the generic 'http' backend.
+        private val pdpSelector = System.getenv(AUTHORIZATION_BACKEND_ENV_VAR) ?: "kotlin"
+        private val authorizationBackend = when (pdpSelector) {
+            "cerbos", "openftv" -> "http"
+            else -> pdpSelector
+        }
+        private val useAlternateBackend = pdpSelector != "kotlin"
         private val needsBackendEnvVar = authorizationBackend != "kotlin"
 
         // All variables below have to be overridable in the docker-compose.yaml file
@@ -137,16 +143,16 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
             if (needsBackendEnvVar) {
                 put("AUTHORIZATION_SERVICE_BACKEND", authorizationBackend)
             }
-            // Each backend connects directly to its PDP (no proxy containers)
-            when (authorizationBackend) {
+            // Each PDP connects directly via its native URL
+            when (pdpSelector) {
                 "topaz" -> put("AUTHZEN_PDP_URL", "http://topaz:8383")
                 "cerbos" -> put("AUTHZEN_PDP_URL", "http://cerbos:3592")
                 "spicedb" -> {
                     put("AUTHZEN_PDP_URL", "http://spicedb:8090")
                     put("SPICEDB_TOKEN", "test")
                 }
-                // AuthzForce base URL — the library auto-discovers the domain ID
                 "authzforce" -> put("AUTHZEN_PDP_URL", "http://authzforce:8080/authzforce-ce")
+                "openftv" -> put("AUTHZEN_PDP_URL", "http://openftv-pdp:8443")
             }
         }
     }
@@ -236,7 +242,7 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
         // now stop the rest of the Docker Compose containers (TestContainers just kills and removes the containers)
         val stopProfiles = mutableListOf("--profile itest")
         if (useAlternateBackend) {
-            stopProfiles.add("--profile $authorizationBackend")
+            stopProfiles.add("--profile $pdpSelector")
         }
         dockerComposeContainer.withOptions(*stopProfiles.toTypedArray()).stop()
     }
@@ -247,8 +253,8 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
 
         val profiles = mutableListOf("--profile zac", "--profile itest")
         if (useAlternateBackend) {
-            profiles.add("--profile $authorizationBackend")
-            logger.info { "Using $authorizationBackend as authorization backend" }
+            profiles.add("--profile $pdpSelector")
+            logger.info { "Using $pdpSelector PDP with '$authorizationBackend' backend" }
         }
 
         return ComposeContainer("zac-itest-", File("docker-compose.yaml"))
@@ -293,7 +299,7 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                 Wait.forLogMessage(".* WildFly .* started .*", 1)
                     .withStartupTimeout(3.minutes.toJavaDuration())
             ).let { container ->
-                when (authorizationBackend) {
+                when (pdpSelector) {
                     "topaz" -> container.waitingFor(
                         "topaz",
                         Wait.forLogMessage(".*Topaz authorizer is ready.*", 1)
@@ -320,6 +326,12 @@ class ZacItestProjectConfig : AbstractProjectConfig() {
                             "authzforce-init",
                             OneShotStartupWaitStrategy()
                                 .withStartupTimeout(2.minutes.toJavaDuration())
+                        )
+                    "openftv" -> container
+                        .waitingFor(
+                            "openftv-pdp",
+                            Wait.forHealthcheck()
+                                .withStartupTimeout(3.minutes.toJavaDuration())
                         )
                     else -> container
                 }

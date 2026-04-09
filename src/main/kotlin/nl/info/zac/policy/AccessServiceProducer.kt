@@ -22,10 +22,9 @@ import java.util.logging.Logger
  * Each backend demonstrates a different integration pattern:
  * - `kotlin` (default): in-process Kotlin policies — no external PDP needed
  * - `topaz`: Topaz Rego engine via native `is` API
- * - `cerbos`: Cerbos 0.51.0+ via native AuthZEN API
  * - `spicedb`: SpiceDB via Permissions API
  * - `authzforce`: AuthzForce XACML 3.0 PDP via XACML JSON + MDP
- * - `http`: generic HTTP AuthZEN PDP
+ * - `http`: generic HTTP AuthZEN PDP (works with Cerbos, OpenFTV, or any AuthZEN-compliant PDP)
  * - `grpc`: generic gRPC AuthZEN PDP
  */
 @ApplicationScoped
@@ -42,14 +41,13 @@ class AccessServiceProducer @Inject constructor(
     fun produce(): AccessService = when (backend.lowercase()) {
         "kotlin" -> AccessServiceImpl()
         "topaz" -> createTopazTransport()
-        "cerbos" -> createCerbosTransport()
         "spicedb" -> createSpiceDbTransport()
         "authzforce" -> createAuthzForceTransport()
         "http" -> createAuthZenHttpTransport()
         "grpc" -> createAuthZenGrpcTransport()
         else -> throw IllegalArgumentException(
             "Unknown authorization backend: '$backend'. " +
-                "Must be 'kotlin', 'topaz', 'cerbos', 'spicedb', 'authzforce', 'http', or 'grpc'."
+                "Must be 'kotlin', 'topaz', 'spicedb', 'authzforce', 'http', or 'grpc'."
         )
     }
 
@@ -71,9 +69,6 @@ class AccessServiceProducer @Inject constructor(
     } catch (e: ClassNotFoundException) {
         throw IllegalStateException("Backend 'topaz' requires authzen-topaz on the classpath.", e)
     }
-
-    private fun createCerbosTransport(): AccessService =
-        createAuthZenHttpTransport()
 
     @Suppress("UNCHECKED_CAST")
     private fun createSpiceDbTransport(): AccessService = try {
