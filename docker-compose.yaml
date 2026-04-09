@@ -360,6 +360,27 @@ services:
         condition: service_healthy
     profiles: ["authzforce"]
 
+  # OpenFTV PDP (OPA via native AuthZEN API)
+  openftv-pdp:
+    image: registry.gitlab.com/digilab.overheid.nl/ecosystem/ftv/open-ftv/eam/pdp:latest
+    environment:
+      - PDP_POLICIES_LANGUAGE=rego
+      - PDP_POLICIES_STORE=/policies
+      - PDP_AUTHENTICATION_TYPE=none
+      - PDP_ADL_TYPE=stdout
+      - PDP_ADL_SERVICE_NAME=zac-openftv
+    volumes:
+      - ./openftv/policies:/policies:ro
+    ports:
+      - "9004:8443"
+      - "8104:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: ["openftv"]
+
   brp-personen-wiremock:
     image: wiremock/wiremock:3.13.2@sha256:fd27e46090916e85326229e5102ee169ae729059f3374549615bd20a35fee1f2
     volumes:
